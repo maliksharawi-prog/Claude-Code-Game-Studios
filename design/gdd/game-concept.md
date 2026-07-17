@@ -1,7 +1,7 @@
 # Game Concept: Sweet Cascade
 
 *Created: 2026-07-17*
-*Status: Draft — core loop validated by concept prototype (**PROCEED**, 2026-07-17); open decisions: brewing hook approval, Godot vs Unity confirmation*
+*Status: Approved — core loop validated by concept prototype (**PROCEED**, 2026-07-17); booster-brewing hook approved by founder (2026-07-17). Engine: Godot 4.6 stands unless console/native-SDK needs force a revisit.*
 
 ---
 
@@ -53,9 +53,10 @@ recipes, making events mechanically meaningful rather than purely cosmetic.
 - Affects gameplay: booster loadout becomes a pre-level strategic choice.
 - Connects to the core fantasy: cascades literally *produce* the resources
   that fuel bigger future cascades.
-- **Status: PROPOSED — needs user approval; this is the largest creative
-  decision made autonomously in this draft.** The prototype tests only the
-  base match-3 loop; the brewing layer is a Phase 2 validation target.
+- **Status: APPROVED by founder (2026-07-17).** The concept prototype tested
+  only the base match-3 loop; the brewing layer remains a Phase 2 validation
+  target — approval covers the direction, and a lightweight Phase 2 prototype
+  still gates full implementation ("is pre-level choice fun or friction?").
 
 ---
 

@@ -4,8 +4,8 @@
 - **Version**: 1.0
 - **Last Updated**: 2026-07-17
 - **Owned By**: art-director
-- **Status**: Draft — authored autonomously (solo session), awaiting founder review
-- **Art Director Sign-Off (AD-ART-BIBLE)**: Not yet run — this draft was authored without the director-gate review pass per task instructions. Treat every `(PROPOSED)` tag below as an open decision point for founder review.
+- **Status**: Approved by founder (2026-07-17) — all `(PROPOSED)` items accepted as the working direction. Outstanding production tasks (not approval blockers): colorblind-simulation pass on the candy shape set; licensed display-font selection with `ui-programmer`.
+- **Art Director Sign-Off (AD-ART-BIBLE)**: Not yet run — the director-gate review pass was skipped in the autonomous session; founder approval supersedes for now. Run the gate before Production commit if desired.
 - **Source documents**: `design/gdd/game-concept.md` (PROCEED verdict, 2026-07-17), `.claude/docs/technical-preferences.md` (Godot 4.6 engine + performance budgets)
 
 ---

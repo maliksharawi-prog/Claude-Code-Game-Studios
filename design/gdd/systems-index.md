@@ -83,12 +83,12 @@ table row:
 | 9 | Save & Persistence | Local serialization of player profile (unlocked levels, per-level star record, settings); generic save/load contract. | Persistence | Foundation | MVP | MVP | Not Started | design/gdd/save-persistence.md | — |
 | 10 | Game UI/Screens Flow | High-level screen state machine and navigation (menu, level select, in-level HUD shell, results/star ceremony). Per-screen layout detail is UX Designer territory (`design/ux/`). | UI | Presentation | MVP | MVP | Not Started | design/gdd/screen-flow.md | Level Objective & Move-Limit System, Scoring & Star Thresholds, Level Progression/World Map, Save & Persistence |
 | 11 | Level Progression / World Map | Multi-region world structure, level node graph, star-gated unlock rules, region theming slots. | Progression | Feature | Alpha | MVP | Not Started | design/gdd/world-map.md | Level Data Format, Scoring & Star Thresholds, Save & Persistence |
-| 12 | Booster Brewing Meta | Ingredient harvest from matches, recipe unlock/discovery, pre-level booster loadout. **PROPOSED — pending founder approval of the hook.** | Economy | Polish | Vertical Slice | **2** | Not Started — BLOCKED pending approval | design/gdd/booster-brewing.md | Match-3 Board Engine, Special Candies & Combo Matrix, Level Objective & Move-Limit System, Save & Persistence, Game UI/Screens Flow |
+| 12 | Booster Brewing Meta | Ingredient harvest from matches, recipe unlock/discovery, pre-level booster loadout. **APPROVED by founder 2026-07-17** — full GDD still gated on a Phase 2 friction prototype. | Economy | Polish | Vertical Slice | **2** | Not Started — hook approved; prototype gate before full GDD | design/gdd/booster-brewing.md | Match-3 Board Engine, Special Candies & Combo Matrix, Level Objective & Move-Limit System, Save & Persistence, Game UI/Screens Flow |
 | 13 | Events/Theming Engine | Data-driven seasonal event framework: time-boxed content swaps, limited ingredients/recipes, region re-theming, daily challenges. | Meta | Polish | Alpha | **3** | Not Started — deferred | design/gdd/events-theming.md | Level Data Format, Level Progression/World Map, Booster Brewing Meta, Save & Persistence, Game UI/Screens Flow |
 | 14 | Social Layer | Friend leaderboards, async friend challenges, gifting — player-facing social comparison. | Social | Polish | Full Vision | **3** | Not Started — deferred | design/gdd/social-layer.md | Scoring & Star Thresholds, Save & Persistence, Backend & Accounts Service, Game UI/Screens Flow |
 | 15 | Backend & Accounts Service *(inferred)* | Account identity, cloud sync, and leaderboard/challenge server backing the Social Layer. | Core | Foundation (Phase-3 infra) | Full Vision | **3** | Deferred — non-GDD | N/A — recommend `docs/architecture/` ADR, not a GDD (technical-director scope) | — (external infra; consumed by Social Layer) |
 
-**Phase legend**: MVP = approved core scope · 2 = brewing hook, PROPOSED, pending founder approval · 3 = live-ops/social, explicitly deferred per `game-concept.md`.
+**Phase legend**: MVP = approved core scope · 2 = brewing hook (approved 2026-07-17; friction prototype gates full GDD) · 3 = live-ops/social, explicitly deferred per `game-concept.md`.
 
 ---
 
@@ -250,7 +250,7 @@ No other cycles detected.
 | Alpha-priority systems designed | 0 / 2 |
 | Full-Vision-priority systems designed | 0 / 2 |
 | Phase-MVP systems designed | 0 / 11 |
-| Phase-2 systems designed | 0 / 1 (blocked pending founder approval) |
+| Phase-2 systems designed | 0 / 1 (hook approved 2026-07-17; awaiting friction prototype before full GDD) |
 | Phase-3 systems designed | 0 / 3 |
 
 ---
