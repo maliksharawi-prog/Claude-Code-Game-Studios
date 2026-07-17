@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE - NOT FOR PRODUCTION
+  Question: Is the swap → match → cascade loop (with match-4/5 specials)
+            intrinsically satisfying enough that a player voluntarily replays?
+  Date: 2026-07-17
+  Concept: Sweet Cascade (design/gdd/game-concept.md)
+  Path: HTML (puzzle logic — timing precision is not the hypothesis)
+  Open by double-clicking. No server, no install, works with mouse or touch.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Sweet Cascade — Concept Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(160deg, #7b2ff7 0%, #f107a3 55%, #ff8c42 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 12px; overflow: hidden; user-select: none; touch-action: none;
+  }
+  h1 { color: #fff; font-size: 22px; text-shadow: 0 2px 8px rgba(0,0,0,.35); letter-spacing: 1px; }
+  #hud {
+    display: flex; gap: 10px; color: #fff; font-weight: 600;
+  }
+  #hud .stat {
+    background: rgba(255,255,255,.18); border-radius: 12px; padding: 6px 14px;
+    text-align: center; backdrop-filter: blur(4px); min-width: 76px;
+  }
+  #hud .stat small { display: block; font-size: 10px; opacity: .85; text-transform: uppercase; letter-spacing: 1px; }
+  #hud .stat span { font-size: 18px; }
+  #board-wrap { position: relative; }
+  #board {
+    position: relative;
+    width: min(92vw, 62vh, 480px); height: min(92vw, 62vh, 480px);
+    background: rgba(255,255,255,.22);
+    border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    overflow: hidden;
+  }
+  .tile {
+    position: absolute; width: 12.5%; height: 12.5%;
+    display: flex; align-items: center; justify-content: center;
+    transition: left .18s ease, top .28s cubic-bezier(.3,1.2,.5,1);
+    cursor: pointer;
+  }
+  .tile .chip {
+    width: 84%; height: 84%; border-radius: 26%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(min(92vw, 62vh, 480px) / 14);
+    box-shadow: inset 0 -4px 6px rgba(0,0,0,.18), inset 0 3px 5px rgba(255,255,255,.55), 0 2px 4px rgba(0,0,0,.2);
+    position: relative; overflow: hidden;
+  }
+  .tile .stripes {
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  }
+  .tile.stripe-h .stripes { background: repeating-linear-gradient(0deg, rgba(255,255,255,.75) 0 4px, transparent 4px 11px); }
+  .tile.stripe-v .stripes { background: repeating-linear-gradient(90deg, rgba(255,255,255,.75) 0 4px, transparent 4px 11px); }
+  .tile.bomb .chip { background: radial-gradient(circle at 35% 30%, #4a4a6a, #17172b) !important; }
+  .tile.selected .chip { outline: 4px solid #fff; outline-offset: -2px; animation: pulse .6s infinite alternate; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+  .tile.pop { transition: transform .22s ease, opacity .22s ease; transform: scale(1.55); opacity: 0; z-index: 3; }
+  .tile.shake { animation: shake .3s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  #callout {
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%) scale(.6);
+    font-size: 44px; font-weight: 800; color: #fff; pointer-events: none; opacity: 0; z-index: 5;
+    text-shadow: 0 3px 0 #d63384, 0 6px 18px rgba(0,0,0,.4); white-space: nowrap;
+  }
+  #callout.show { animation: callout 1s ease forwards; }
+  @keyframes callout {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(.6); }
+    20% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
+    40% { transform: translate(-50%,-50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%,-70%) scale(1); }
+  }
+  #toast {
+    position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+    background: rgba(0,0,0,.55); color: #fff; padding: 6px 16px; border-radius: 20px;
+    font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 5; white-space: nowrap;
+  }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(20,5,40,.72);
+    display: none; align-items: center; justify-content: center; z-index: 10;
+  }
+  #overlay.show { display: flex; }
+  #overlay .card {
+    background: #fff; border-radius: 20px; padding: 32px 40px; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); max-width: 320px;
+  }
+  #overlay h2 { font-size: 24px; color: #d63384; margin-bottom: 6px; }
+  #overlay .stars { font-size: 38px; letter-spacing: 6px; margin: 10px 0; }
+  #overlay p { color: #555; margin-bottom: 18px; font-size: 15px; }
+  #overlay button {
+    background: linear-gradient(135deg, #7b2ff7, #f107a3); color: #fff; border: none;
+    font-size: 17px; font-weight: 700; padding: 12px 34px; border-radius: 30px; cursor: pointer;
+    box-shadow: 0 6px 16px rgba(123,47,247,.45);
+  }
+  #overlay button:active { transform: scale(.96); }
+  #hint { color: rgba(255,255,255,.85); font-size: 12px; text-align: center; max-width: 420px; }
+</style>
+</head>
+<body>
+  <h1>🍬 Sweet Cascade</h1>
+  <div id="hud">
+    <div class="stat"><small>Score</small><span id="s-score">0</span></div>
+    <div class="stat"><small>Target</small><span id="s-target">2500</span></div>
+    <div class="stat"><small>Moves</small><span id="s-moves">25</span></div>
+    <div class="stat"><small>Best chain</small><span id="s-chain">—</span></div>
+  </div>
+  <div id="board-wrap">
+    <div id="board"></div>
+    <div id="callout"></div>
+    <div id="toast"></div>
+  </div>
+  <div id="hint">Swipe (or tap two adjacent candies) to swap. Match 4 → striped candy clears a line. Match 5 → color bomb clears a whole color.</div>
+  <div id="overlay"><div class="card">
+    <h2 id="ov-title"></h2>
+    <div class="stars" id="ov-stars"></div>
+    <p id="ov-text"></p>
+    <button id="ov-btn">Play again</button>
+  </div></div>
+
+<script>
+// PROTOTYPE - NOT FOR PRODUCTION (see header comment)
+const SIZE = 8;
+const EMOJI = ['🍓','🍊','🍋','🍏','🍇'];
+const TINTS = ['#ff5d73','#ff9f45','#ffd93d','#7ddf64','#b47aea'];
+const MOVES_START = 25, TARGET = 2500;
+const STAR2 = 4000, STAR3 = 6000;
+const POINTS_PER_TILE = 20;
+
+const boardEl = document.getElementById('board');
+let grid = [];          // grid[r][c] = tile object or null
+let busy = false, gameOver = false;
+let score = 0, moves = MOVES_START, bestChain = 0;
+let selected = null;
+let lastSwap = [];      // cells involved in the player's swap (special spawn anchors)
+let targetToastShown = false;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand = n => Math.floor(Math.random() * n);
+
+function makeTile(color, special) {
+  const t = { color, special: special || null, r: 0, c: 0, el: document.createElement('div') };
+  t.el.className = 'tile';
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  const stripes = document.createElement('span'); stripes.className = 'stripes';
+  const glyph = document.createElement('span'); glyph.className = 'glyph';
+  chip.appendChild(stripes); chip.appendChild(glyph);
+  t.el.appendChild(chip);
+  styleTile(t);
+  t.el.addEventListener('pointerdown', e => onPointerDown(e, t));
+  boardEl.appendChild(t.el);
+  return t;
+}
+
+function styleTile(t) {
+  const chip = t.el.querySelector('.chip');
+  const glyph = t.el.querySelector('.glyph');
+  t.el.classList.remove('stripe-h','stripe-v','bomb');
+  if (t.special === 'bomb') {
+    t.el.classList.add('bomb');
+    glyph.textContent = '🌈';
+    chip.style.background = '';
+  } else {
+    chip.style.background = `radial-gradient(circle at 35% 30%, #ffffffcc, ${TINTS[t.color]} 55%)`;
+    glyph.textContent = EMOJI[t.color];
+    if (t.special === 'stripe-h') t.el.classList.add('stripe-h');
+    if (t.special === 'stripe-v') t.el.classList.add('stripe-v');
+  }
+}
+
+function place(t, r, c) { t.r = r; t.c = c; grid[r][c] = t; render(t); }
+function render(t) { t.el.style.left = (t.c * 12.5) + '%'; t.el.style.top = (t.r * 12.5) + '%'; }
+
+// ---------- board setup ----------
+function initBoard() {
+  boardEl.innerHTML = '';
+  grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    let color;
+    do { color = rand(EMOJI.length); } while (createsMatchAt(r, c, color));
+    place(makeTile(color), r, c);
+  }
+  if (!hasAvailableMove()) reshuffle(false);
+}
+
+function createsMatchAt(r, c, color) {
+  return (c >= 2 && colorAt(r, c-1) === color && colorAt(r, c-2) === color) ||
+         (r >= 2 && colorAt(r-1, c) === color && colorAt(r-2, c) === color);
+}
+function colorAt(r, c) {
+  const t = grid[r] && grid[r][c];
+  return t && t.special !== 'bomb' ? t.color : -1;
+}
+
+// ---------- match detection (on a color snapshot) ----------
+function findRuns() {
+  const runs = [];
+  for (let r = 0; r < SIZE; r++) {
+    let c = 0;
+    while (c < SIZE) {
+      const col = colorAt(r, c);
+      let len = 1;
+      while (col >= 0 && c + len < SIZE && colorAt(r, c + len) === col) len++;
+      if (col >= 0 && len >= 3) runs.push({ orient: 'h', len, cells: Array.from({length: len}, (_, i) => ({ r, c: c + i })) });
+      c += len;
+    }
+  }
+  for (let c = 0; c < SIZE; c++) {
+    let r = 0;
+    while (r < SIZE) {
+      const col = colorAt(r, c);
+      let len = 1;
+      while (col >= 0 && r + len < SIZE && colorAt(r + len, c) === col) len++;
+      if (col >= 0 && len >= 3) runs.push({ orient: 'v', len, cells: Array.from({length: len}, (_, i) => ({ r: r + i, c })) });
+      r += len;
+    }
+  }
+  return runs;
+}
+
+// ---------- input ----------
+let dragStart = null;
+function onPointerDown(e, t) {
+  if (busy || gameOver) return;
+  e.preventDefault();
+  dragStart = { x: e.clientX, y: e.clientY, tile: t };
+}
+window.addEventListener('pointermove', e => {
+  if (!dragStart || busy || gameOver) return;
+  const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+  if (Math.hypot(dx, dy) < 24) return;
+  const t = dragStart.tile; dragStart = null;
+  let dr = 0, dc = 0;
+  if (Math.abs(dx) > Math.abs(dy)) dc = dx > 0 ? 1 : -1; else dr = dy > 0 ? 1 : -1;
+  const nr = t.r + dr, nc = t.c + dc;
+  if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) trySwap(t, grid[nr][nc]);
+});
+window.addEventListener('pointerup', e => {
+  if (!dragStart || busy || gameOver) { dragStart = null; return; }
+  const t = dragStart.tile; dragStart = null;
+  if (selected === t) { setSelected(null); return; }
+  if (selected && Math.abs(selected.r - t.r) + Math.abs(selected.c - t.c) === 1) {
+    const a = selected; setSelected(null); trySwap(a, t);
+  } else setSelected(t);
+});
+function setSelected(t) {
+  if (selected) selected.el.classList.remove('selected');
+  selected = t;
+  if (t) t.el.classList.add('selected');
+}
+
+// ---------- swap & resolve ----------
+function modelSwap(a, b) {
+  const ar = a.r, ac = a.c;
+  grid[b.r][b.c] = a; grid[ar][ac] = b;
+  a.r = b.r; a.c = b.c; b.r = ar; b.c = ac;
+  render(a); render(b);
+}
+
+async function trySwap(a, b) {
+  if (busy || gameOver || !a || !b) return;
+  busy = true;
+  modelSwap(a, b);
+  await sleep(200);
+
+  // Color bomb activation (counts as a move even without a normal match)
+  if (a.special === 'bomb' || b.special === 'bomb') {
+    lastSwap = [];
+    moves--; updateHud();
+    await resolveBombSwap(a, b);
+    await afterMove();
+    return;
+  }
+
+  lastSwap = [{ r: a.r, c: a.c }, { r: b.r, c: b.c }];
+  if (findRuns().length === 0) {
+    modelSwap(a, b); // revert — invalid swap costs nothing
+    a.el.classList.add('shake'); b.el.classList.add('shake');
+    await sleep(320);
+    a.el.classList.remove('shake'); b.el.classList.remove('shake');
+    busy = false;
+    return;
+  }
+  moves--; updateHud();
+  await resolveCascades();
+  await afterMove();
+}
+
+async function resolveBombSwap(a, b) {
+  const bomb = a.special === 'bomb' ? a : b;
+  const other = bomb === a ? b : a;
+  const toClear = new Set();
+  toClear.add(key(bomb.r, bomb.c));
+  if (other.special === 'bomb') {
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) toClear.add(key(r, c));
+    showCallout('BOARD BLAST!');
+  } else {
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++)
+      if (grid[r][c] && grid[r][c].special !== 'bomb' && grid[r][c].color === other.color) toClear.add(key(r, c));
+  }
+  await clearAndFall(toClear, 1, new Map());
+  await resolveCascades(2); // any resulting matches continue the chain
+}
+
+const key = (r, c) => r * SIZE + c;
+
+// Expand a cleared set through special-candy chain reactions.
+function expandSpecials(set) {
+  const queue = [...set];
+  while (queue.length) {
+    const k = queue.pop();
+    const r = Math.floor(k / SIZE), c = k % SIZE;
+    const t = grid[r][c];
+    if (!t) continue;
+    let extra = [];
+    if (t.special === 'stripe-h') for (let cc = 0; cc < SIZE; cc++) extra.push(key(r, cc));
+    if (t.special === 'stripe-v') for (let rr = 0; rr < SIZE; rr++) extra.push(key(rr, c));
+    if (t.special === 'bomb') { // bomb popped passively: clears a random color
+      const col = rand(EMOJI.length);
+      for (let rr = 0; rr < SIZE; rr++) for (let cc = 0; cc < SIZE; cc++)
+        if (grid[rr][cc] && grid[rr][cc].special !== 'bomb' && grid[rr][cc].color === col) extra.push(key(rr, cc));
+    }
+    t.special = null; // consumed — prevents re-processing
+    for (const k2 of extra) if (!set.has(k2)) { set.add(k2); queue.push(k2); }
+  }
+}
+
+async function resolveCascades(startChain = 1) {
+  let chain = startChain;
+  while (true) {
+    const runs = findRuns();
+    if (runs.length === 0) break;
+
+    // Decide special spawns: run of 5 → bomb, run of 4 → striped (perpendicular to run)
+    const spawns = new Map(); // key -> special type
+    const cleared = new Set();
+    for (const run of runs) {
+      for (const cell of run.cells) cleared.add(key(cell.r, cell.c));
+      if (run.len >= 4) {
+        const anchor =
+          run.cells.find(c => lastSwap.some(s => s.r === c.r && s.c === c.c)) ||
+          run.cells[Math.floor(run.len / 2)];
+        spawns.set(key(anchor.r, anchor.c), run.len >= 5 ? 'bomb' : (run.orient === 'h' ? 'stripe-v' : 'stripe-h'));
+      }
+    }
+    lastSwap = [];
+    for (const k of spawns.keys()) cleared.delete(k); // spawn cells transform instead of popping
+    expandSpecials(cleared);
+    for (const k of spawns.keys()) cleared.delete(k);
+
+    score += cleared.size * POINTS_PER_TILE * chain;
+    if (chain >= 2) showCallout(chain === 2 ? 'Sweet! ×2' : chain === 3 ? 'Tasty! ×3' : `Delicious! ×${chain}`);
+    bestChain = Math.max(bestChain, chain);
+    updateHud();
+
+    await clearAndFall(cleared, chain, spawns);
+    chain++;
+  }
+}
+
+async function clearAndFall(cleared, chain, spawns) {
+  // Transform spawn cells into their special
+  for (const [k, special] of spawns) {
+    const t = grid[Math.floor(k / SIZE)][k % SIZE];
+    if (t) { t.special = special; styleTile(t); }
+  }
+  // Pop cleared tiles
+  for (const k of cleared) {
+    const r = Math.floor(k / SIZE), c = k % SIZE;
+    const t = grid[r][c];
+    if (!t) continue;
+    grid[r][c] = null;
+    t.el.classList.add('pop');
+    setTimeout(() => t.el.remove(), 240);
+  }
+  if (cleared.size) await sleep(240);
+
+  // Gravity + refill
+  for (let c = 0; c < SIZE; c++) {
+    let write = SIZE - 1;
+    for (let r = SIZE - 1; r >= 0; r--) {
+      if (grid[r][c]) {
+        const t = grid[r][c];
+        if (write !== r) { grid[r][c] = null; t.r = write; grid[write][c] = t; render(t); }
+        write--;
+      }
+    }
+    let spawnRow = -1;
+    for (let r = write; r >= 0; r--) {
+      const t = makeTile(rand(EMOJI.length));
+      t.r = spawnRow--; t.c = c; render(t);           // start above the board
+      grid[r][c] = t; t.r = r;
+      requestAnimationFrame(() => requestAnimationFrame(() => render(t))); // then fall in
+    }
+  }
+  await sleep(340);
+}
+
+async function afterMove() {
+  if (score >= TARGET && !targetToastShown) { targetToastShown = true; showToast('🎉 Target reached — keep going for more stars!'); }
+  if (moves <= 0) { endGame(); busy = false; return; }
+  if (!hasAvailableMove()) { showToast('No moves left — reshuffling…'); await sleep(700); reshuffle(true); }
+  busy = false;
+}
+
+// ---------- availability & reshuffle ----------
+function hasAvailableMove() {
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    if (grid[r][c] && grid[r][c].special === 'bomb') return true;
+    for (const [dr, dc] of [[0,1],[1,0]]) {
+      const r2 = r + dr, c2 = c + dc;
+      if (r2 >= SIZE || c2 >= SIZE) continue;
+      swapColors(r, c, r2, c2);
+      const ok = quickMatchAt(r, c) || quickMatchAt(r2, c2);
+      swapColors(r, c, r2, c2);
+      if (ok) return true;
+    }
+  }
+  return false;
+}
+function swapColors(r1, c1, r2, c2) {
+  const a = grid[r1][c1], b = grid[r2][c2];
+  grid[r1][c1] = b; grid[r2][c2] = a;
+}
+function quickMatchAt(r, c) {
+  const col = colorAt(r, c);
+  if (col < 0) return false;
+  let n = 1;
+  for (let cc = c - 1; cc >= 0 && colorAt(r, cc) === col; cc--) n++;
+  for (let cc = c + 1; cc < SIZE && colorAt(r, cc) === col; cc++) n++;
+  if (n >= 3) return true;
+  n = 1;
+  for (let rr = r - 1; rr >= 0 && colorAt(rr, c) === col; rr--) n++;
+  for (let rr = r + 1; rr < SIZE && colorAt(rr, c) === col; rr++) n++;
+  return n >= 3;
+}
+function reshuffle(animate) {
+  const tiles = [];
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (grid[r][c]) tiles.push(grid[r][c]);
+  let tries = 0;
+  do {
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = rand(i + 1);
+      [tiles[i].color, tiles[j].color] = [tiles[j].color, tiles[i].color];
+      [tiles[i].special, tiles[j].special] = [tiles[j].special, tiles[i].special];
+    }
+  } while (++tries < 60 && (findRuns().length > 0 || !hasAvailableMove()));
+  tiles.forEach(styleTile);
+}
+
+// ---------- HUD / feedback / end ----------
+function updateHud() {
+  document.getElementById('s-score').textContent = score;
+  document.getElementById('s-moves').textContent = moves;
+  document.getElementById('s-chain').textContent = bestChain >= 2 ? '×' + bestChain : '—';
+}
+function showCallout(text) {
+  const el = document.getElementById('callout');
+  el.textContent = text;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+let toastTimer = null;
+function showToast(text) {
+  const el = document.getElementById('toast');
+  el.textContent = text; el.style.opacity = 1;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.opacity = 0, 2200);
+}
+function endGame() {
+  gameOver = true;
+  const stars = score >= STAR3 ? 3 : score >= STAR2 ? 2 : score >= TARGET ? 1 : 0;
+  document.getElementById('ov-title').textContent = stars > 0 ? 'Level complete!' : 'Out of moves!';
+  document.getElementById('ov-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  document.getElementById('ov-text').textContent =
+    `Score: ${score} (target ${TARGET})` + (bestChain >= 2 ? ` · best chain ×${bestChain}` : '');
+  document.getElementById('overlay').classList.add('show');
+}
+document.getElementById('ov-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('show');
+  score = 0; moves = MOVES_START; bestChain = 0; gameOver = false; busy = false;
+  targetToastShown = false; setSelected(null);
+  updateHud(); initBoard();
+});
+
+document.getElementById('s-target').textContent = TARGET;
+updateHud();
+initBoard();
+</script>
+</body>
+</html>
