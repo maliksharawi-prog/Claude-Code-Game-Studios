@@ -1,7 +1,7 @@
 # Game Concept: Sweet Cascade
 
 *Created: 2026-07-17*
-*Status: Draft — authored autonomously from the founder's vision statement; awaiting user review and approval*
+*Status: Draft — core loop validated by concept prototype (**PROCEED**, 2026-07-17); open decisions: brewing hook approval, Godot vs Unity confirmation*
 
 ---
 
@@ -291,8 +291,8 @@ levels — before any meta, theming, or social features exist.
 - [ ] **User review of this draft** — especially the brewing hook (biggest autonomous decision) and the Godot engine choice
 - [x] Fill in CLAUDE.md technology stack based on engine choice (`/setup-engine`) — Godot 4.6 / GDScript, done this session
 - [x] **Prototype core idea** (`/prototype`) — HTML concept prototype built at `prototypes/sweet-cascade-concept/prototype.html`; awaiting user playtest verdict
-- [ ] Playtest the prototype → record PROCEED / PIVOT / KILL in `prototypes/sweet-cascade-concept/REPORT.md`
-- [ ] If PROCEED: `/art-bible` to lock the visual identity, then `/map-systems`
+- [x] Playtest the prototype → **PROCEED** recorded in `prototypes/sweet-cascade-concept/REPORT.md` (2026-07-17)
+- [x] `/art-bible` to lock the visual identity (Draft), then `/map-systems` (Draft)
 - [ ] Design each system (`/design-system [system-name]`) using prototype learnings
 - [ ] `/create-architecture` once MVP systems have GDDs
 - [ ] Plan first milestone (`/sprint-plan new`)
