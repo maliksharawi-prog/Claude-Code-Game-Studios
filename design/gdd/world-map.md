@@ -1,6 +1,7 @@
 # Level Progression / World Map
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see
+`design/gdd/reviews/world-map-review-log.md`*
 *Layer: Feature · Priority: Alpha · Phase: MVP · Category: Progression*
 *Author: systems-designer · Created: 2026-07-18 · Last Updated: 2026-07-18*
 *Implements Pillar: Pillar 3 — The World Is Alive (primary: the multi-region
@@ -9,13 +10,13 @@ traveled world); supports Pillar 2 — Clever, Never Cheated (every unlock gate
 is a visible, inspectable, authored star-count formula — never hidden
 manipulation and never a monetized bypass)*
 *Depends On: Level Data Format (`design/gdd/level-data-format.md`, APPROVED),
-Save & Persistence (`design/gdd/save-persistence.md`, Draft), Match-3 Board
-Engine (`design/gdd/board-engine.md`, APPROVED — manifest
+Save & Persistence (`design/gdd/save-persistence.md`, APPROVED), Match-3
+Board Engine (`design/gdd/board-engine.md`, APPROVED — manifest
 cross-validation only, no runtime dependency), Scoring & Star Thresholds
-(`design/gdd/scoring-stars.md`, #6, Draft — soft/forward
-dependency, see Dependencies)*
+(`design/gdd/scoring-stars.md`, #6, Revised — seam reconciled, awaiting
+re-review — soft/forward dependency, see Dependencies)*
 *Depended On By: Game UI/Screens Flow (`design/gdd/screen-flow.md`, #10,
-Draft), Events/Theming Engine (`design/gdd/events-theming.md`, #13,
+APPROVED), Events/Theming Engine (`design/gdd/events-theming.md`, #13,
 Phase 3, forward dependency)*
 *Source: `design/gdd/systems-index.md` · `design/gdd/level-data-format.md` ·
 `design/gdd/board-engine.md` · `design/gdd/save-persistence.md` ·
@@ -134,7 +135,7 @@ emerges post-launch.
 |---|---|
 | `LOCKED` | Not yet playable. Either its region is locked, or the immediately preceding level in its region's sequence has never been completed. |
 | `UNLOCKED` | Playable, not yet won. Either it is the first level in an unlocked region, or the immediately preceding level in its sequence has been completed at least once. |
-| `COMPLETED` | Has been won at least once. Always carries a `best_stars` value of **1–3** (never 0 — Level Data Format's V17 guarantees any win awards at least 1 star). Remains fully replayable. |
+| `COMPLETED` | Has been won at least once. Carries a `best_stars` value of **0–3**. In the common case this is **1–3**: Level Data Format's V17 guarantees a win floor of 1 star whenever the level defines a `score_target` objective. A `best_stars = 0` completion is a known, accepted edge case for a `collect_color`-only level with no `score_target` present — V17 is explicitly skipped in that case (`level-data-format.md` §Edge Cases: "Scoring and win-condition are parallel systems... decoupling them is intentional, not a gap"), and the same 0-star-on-WIN outcome is independently confirmed reachable by `scoring-stars.md` Formula 7/Edge Cases and `screen-flow.md`'s own Edge Cases table. This does not affect World Map's derivations: Formula 2 keys off record *presence*, not star value, so a level's next-node unlock is unaffected; Formula 5/6 already treat "no record" and "record with `best_stars = 0`" identically. Remains fully replayable. |
 
 Exactly one of these three states applies to a given level at any moment;
 there is no separate "current"/"frontier" node state stored anywhere — the
@@ -271,10 +272,12 @@ pattern.
 level from Save & Persistence: `best_stars` (int, 0–3, already computed and
 persisted by the time World Map queries it). It never computes, weights,
 reinterprets, or second-guesses a star value itself — Scoring & Star
-Thresholds (#6, Draft) owns how a raw score becomes a star
-count; Level Objective & Move-Limit System (#7, Draft) is expected to own
-calling `record_level_completion()` on a win — flagged as not yet
-confirmed by `level-objectives.md` itself as of the 2026-07-18 review, see
+Thresholds (#6, Revised — seam reconciled, awaiting re-review) owns how a
+raw score becomes a star count; Level Objective & Move-Limit System (#7,
+Revised — seam reconciled, awaiting re-review) is expected to own calling
+`record_level_completion()` on a win — flagged as not yet confirmed by
+`level-objectives.md` itself as of the 2026-07-18 review (that document's
+own Dependencies section does not yet list Save & Persistence at all), see
 Dependencies. World Map's dependency on
 those two systems is therefore **soft and indirect** — it depends only on
 the already-persisted output, never on their internal formulas. **Named
@@ -489,7 +492,10 @@ Region 3 (thistleberry_hollow, 30 levels):
 
 **Replay-incentive sanity check** (why `0.6` produces "healthy replay, not
 grind"): a player who wins every level in region 0 exactly once, earning
-the guaranteed minimum of 1 star each, has `30` stars — short of the
+the guaranteed minimum of 1 star each (true wherever a level authors a
+`score_target` objective — the expected common case; see § Detailed Rules
+1's `COMPLETED` state note for the rare `collect_color`-only exception that
+does not carry this guarantee), has `30` stars — short of the
 `54`-star gate into region 1. Reaching `54` from a `30`-star floor requires
 raising `12` of the region's `30` levels from 1★ to 3★ (a `+2` gain each,
 `12 × 2 = 24`, `30 + 24 = 54`) — a meaningful but partial replay ask (40%
@@ -687,11 +693,11 @@ stars, matching `save-persistence.md` Formula 3's own stated range):
 | System | Direction | Nature of Dependency |
 |--------|-----------|----------------------|
 | Level Data Format (`design/gdd/level-data-format.md`, APPROVED) | World Map depends on it | Reads `level_id` (join key), `region` (validated against the manifest's registry, Validation rule W8), and the now-superseded `display_number` (kept as an authoring convenience only, § Detailed Rules 2). |
-| Save & Persistence (`design/gdd/save-persistence.md`, Draft) | World Map depends on it | Reads `level_records` (presence = completed) and calls `get_profile()`/`get_total_stars()` to derive every node/region state (Formulas 2–3). **Zero writes** — World Map never calls `record_level_completion()` or any mutating API; that remains exclusively Level Objective & Move-Limit System's responsibility. **Zero schema changes required** — the existing shape already serves every read this document needs. |
-| Match-3 Board Engine (`design/gdd/board-engine.md`, NEEDS REVISION) | World Map depends on it (validation only, no runtime dependency) | Cross-validates its owned `assets/data/level_manifest.tres` against this document's `world_map_manifest.tres` (Validation rules W6–W7, § Detailed Rules 2). World Map never reads Board Engine's live/runtime state — only its static manifest file, at build/CI time. |
-| Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, #6, not yet authored) | World Map depends on it (soft, forward, indirect) | World Map consumes only the already-persisted `best_stars` (0–3) integer this system will eventually compute — never its internal formula. See § Detailed Rules 3's "Scoring surface boundary" for the declared seam covering any future additional per-level metadata. **Reciprocal note** (per `design/CLAUDE.md`'s bidirectionality rule): when authored, its Dependencies section should note that World Map is a downstream consumer of its output, not of its formula. |
-| Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, #7, not yet authored) | World Map depends on it (soft, forward, indirect) | The system that actually triggers `record_level_completion()` on a win. World Map has no direct dependency on it — only on the resulting Save & Persistence state — but is listed for completeness of the data-provenance chain. |
-| Game UI/Screens Flow (`design/gdd/screen-flow.md`, #10, not yet authored) | Screen Flow depends on this document | Expected to query this document's derived states (Formulas 2, 3, 5, 6) to render the map screen, gate navigation into a level/region, and surface `profile_fully_completed`. **Reciprocal note**: its Dependencies section must list this document when authored. |
+| Save & Persistence (`design/gdd/save-persistence.md`, APPROVED) | World Map depends on it | Reads `level_records` (presence = completed) and calls `get_profile()`/`get_total_stars()` to derive every node/region state (Formulas 2–3). **Zero writes** — World Map never calls `record_level_completion()` or any mutating API; that remains exclusively Level Objective & Move-Limit System's responsibility. **Zero schema changes required** — the existing shape already serves every read this document needs. |
+| Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED) | World Map depends on it (validation only, no runtime dependency) | Cross-validates its owned `assets/data/level_manifest.tres` against this document's `world_map_manifest.tres` (Validation rules W6–W7, § Detailed Rules 2). World Map never reads Board Engine's live/runtime state — only its static manifest file, at build/CI time. |
+| Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, #6, Revised — seam reconciled, awaiting re-review) | World Map depends on it (soft, forward, indirect) | World Map consumes only the already-persisted `best_stars` (0–3) integer this system computes — never its internal formula. See § Detailed Rules 3's "Scoring surface boundary" for the declared seam covering any future additional per-level metadata. **Reciprocal note fulfilled** (per `design/CLAUDE.md`'s bidirectionality rule) — `scoring-stars.md`'s own header already lists World Map as a downstream consumer of its output, not its formula. |
+| Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, #7, Revised — seam reconciled, awaiting re-review) | World Map depends on it (soft, forward, indirect) | The system expected to trigger `record_level_completion()` on a win. World Map has no direct dependency on it — only on the resulting Save & Persistence state. **Verified gap, not yet closed**: as of this review, `level-objectives.md`'s own Dependencies section does not yet list Save & Persistence at all, so this calling responsibility remains unconfirmed by its owning document — tracked in Open Questions below. |
+| Game UI/Screens Flow (`design/gdd/screen-flow.md`, #10, APPROVED) | Screen Flow depends on this document | Queries this document's derived states (Formulas 2, 3, 5, 6) to render the map screen, gate navigation into a level/region, and surface `profile_fully_completed`, superseding its own MVP linear-list placeholder (§9) while reusing the same `WORLD_MAP` base state. **Reciprocal note fulfilled** — `screen-flow.md`'s own Dependencies section already lists this document and confirms this consumption pattern. |
 | Events/Theming Engine (`design/gdd/events-theming.md`, #13, Phase 3) | Events depends on this document | Anticipated consumer of the named-but-undesigned region-level event-retheme seam (§ Detailed Rules 4, 8). **Reciprocal note**: its Dependencies section must list this document when authored. |
 | `design/art/art-bible.md` (not a `design/gdd/` system) | World Map depends on it (constants + rules only) | Supplies the "one path per region, gated sequentially" World Map spec (justifying § Detailed Rules 1's linear decision), the Regional Modularity 4-element theming system (§ Detailed Rules 4), and the Seasonal Event Overlay Rule the Phase 3 seam is named after. |
 | `design/narrative/characters-and-tone.md` (not a `design/gdd/` system) | World Map depends on it (constants + rules only) | Supplies the resident character roster, region personality mood, and the Fizz map-placement rule (§ Detailed Rules 4). |
@@ -822,3 +828,4 @@ tier — documented playtest, `production/qa/evidence/`, ADVISORY):
 | Should a future, clearly-scoped alternate-path mode (e.g., a post-launch "hard mode" alternate route) ever revisit the strictly-linear decision (§ Detailed Rules 1), or should branching remain permanently out of scope for this game? | game-designer / creative-director | Post-launch, only if a concrete design need emerges | — |
 | Once Events/Theming Engine (#13) is authored, does the named-but-undesigned region-level theme-override seam (§ Detailed Rules 4, 8) require a `schema_version` bump to `world_map_manifest.tres`, or does it qualify as a purely additive optional field under this document's existing versioning policy (§ Detailed Rules 6)? | systems-designer | At `events-theming.md` (#13) authoring | — |
 | Should `MIN_LEVELS_PER_REGION`'s safe range upper bound (currently `30`, matching the launch content-planning target) be revisited once real Alpha-scope region content exists, to confirm `30` levels per region is still the intended ceiling rather than merely today's planning assumption? | game-designer | At Alpha content planning | — |
+| Should content authoring guarantee every level defines a `score_target` objective (even secondary to a primary `collect_color` objective) so Level Data Format's V17 win-floor guarantee always applies — keeping Formula 1's replay-incentive sanity check's "1 star minimum per completion" assumption strictly true for every level, not merely the common case? Identified during this review: a `collect_color`-only level can legally resolve `best_stars = 0` on a WIN (confirmed reachable in `level-data-format.md` §Edge Cases, `scoring-stars.md` Formula 7/Edge Cases, and `screen-flow.md`'s Edge Cases table); this does not break World Map's own derivations (§ Detailed Rules 1) but does soften the sanity check's assumption. | game-designer | At content planning for the 4×30 Alpha roster | — |
