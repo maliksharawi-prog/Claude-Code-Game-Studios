@@ -1,6 +1,6 @@
 # Scoring & Star Thresholds
 
-*Status: Revised — seam reconciled, awaiting re-review (2026-07-18)*
+*Status: Reviewed — APPROVED (re-review, 2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Progression*

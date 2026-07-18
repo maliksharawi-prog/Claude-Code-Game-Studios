@@ -229,3 +229,101 @@ models for `ResultsData`/`closest_miss_summary` construction, centered on a
 `finalize_results()` seam this document never implements or acknowledges.
 This must be reconciled — likely in Scoring's favor of the pull/compose
 model it already assumes — before implementation begins.
+
+---
+
+## Re-review (Revision 2) — 2026-07-18
+
+**Scope**: Focused re-review of the Revision 2 seam reconciliation between
+`scoring-stars.md` and `level-objectives.md`, verifying resolution of the
+single shared blocking item from the 2026-07-18 review (the
+`ScoreProvider.finalize_results()` push seam did not compose across the two
+documents). This is not a full re-review of every section/formula — see the
+entry above for the complete first-pass analysis, which remains valid for
+everything outside the reconciled seam.
+**Reviewer**: game-designer (self-authored analysis), user-directed re-review.
+**Prior verdict**: NEEDS REVISION (2026-07-18) — 1 blocking item (seam-composition
+mismatch), 2 recommended (advisory), 1 nice-to-have.
+
+### Verification Items
+
+1. **Push seam fully retired as a live contract.** VERIFIED. `finalize_results`
+   appears in this document exactly three times: the Revision 2 changelog
+   (historical — "dropped the proposed ... push seam"), § Detailed Rules 10a's
+   "replacing the previously-proposed `ScoreProvider.finalize_results(...)`"
+   framing (historical, describing what the ratified seam replaces), and the
+   deliberate negative-test acceptance criterion
+   `test_scoring_never_receives_objectives_resolution` (confirms
+   `finalize_results()` does not exist in implementation). No live contract,
+   no implementation reference, no acceptance criterion exercises it as a real
+   seam. **PASS**.
+2. **Converged pull contract identical in both docs, field-by-field.** VERIFIED.
+   `get_current_score() -> int` and `get_score_results() -> ScoreResults` are
+   declared in this document's § Detailed Rules 10a with the exact field list
+   `{final_score: int, stars_earned: int, score_progress_ratio: float,
+   score_progress_percent: int}`. `level-objectives.md` § Detailed Rules 3
+   consumes `get_current_score()` with matching name/signature/"live, never
+   cached" semantics; § Detailed Rules 9 consumes `get_score_results()` with
+   matching name/signature and "called exactly once, at the resolving
+   `board_stabilized`" timing (this document's own contract permits "any time
+   at or after," so `level-objectives.md`'s narrower actual call site is
+   compatible, not contradictory). Field-by-field, `level-objectives.md`'s
+   assembled `ResultsData` consumes all four `ScoreResults` fields exactly
+   once each (`final_score→score_earned`, `stars_earned→stars_earned`,
+   `score_progress_ratio`/`score_progress_percent→closest_miss_summary.*`) —
+   no phantom fields, none dropped. The resulting `ResultsData` outer shape
+   (`level_id`, `outcome`, `score_earned`, `stars_earned`,
+   `closest_miss_summary`) matches `screen-flow.md` §11's declared seam table
+   exactly (5 fields, same names, same types). **PASS**.
+3. **`closest_miss_summary` ownership consistency.** VERIFIED. This document's
+   § Detailed Rules 8 and its Dependencies row for Game UI/Screens Flow both
+   attribute full `closest_miss_summary` assembly to Level Objective & Move-Limit
+   System (#7); `level-objectives.md` § Detailed Rules 9 and its Cross-References
+   table confirm the same. Cross-checked directly against `screen-flow.md`
+   §11's Declared Seams table (line 364): `closest_miss_summary`'s seam owner
+   is listed as "Level Objective & Move-Limit System (#7)" — unchanged and
+   original, no correction was ever needed there. All three documents agree.
+   **PASS**.
+4. **Revision 2 changelog and Open Questions resolutions match what's on disk.**
+   VERIFIED. This document's changelog (lines 12–21) claims: seam dropped,
+   pull contract ratified in § Detailed Rules 10a, Level Objective is sole
+   assembler — all three claims independently confirmed by direct inspection
+   of § Detailed Rules 10a and § Detailed Rules 8/10. The Open Questions row
+   on `closest_miss_summary`'s final shape is correctly marked "Partially
+   resolved" (ownership settled; the objective-completion dimension's exact
+   shape remains open, correctly deferred to `level-objectives.md`'s own Open
+   Questions) rather than over-claiming full resolution. **PASS**.
+5. **No acceptance criterion tests the dropped push model (except the
+   deliberate negative test); Dependencies row for Level Objective reflects
+   the pull model.** VERIFIED. The "`ScoreResults` construction and Score
+   Query API" acceptance criteria block contains six tests: five exercise the
+   pull seams (`get_score_results()`/`get_current_score()` correctness) and
+   one (`test_scoring_never_receives_objectives_resolution`) is the explicitly
+   labeled negative test confirming the push seam's absence — no criterion
+   asserts push-model behavior as a positive contract. This document's
+   Dependencies row for Level Objective & Move-Limit System describes both
+   pull seams and the sole-assembler model correctly, with no residual
+   push-model language. **PASS**.
+
+### Mechanical Fixes Applied This Pass
+
+None required — no stragglers found. The `*Status:*` header was updated per
+the re-review task's explicit instruction, not as a straggler fix.
+
+### Verdict: APPROVED (re-review, 2026-07-18)
+
+Blocking items resolved: 1 of 1 (the `finalize_results()` seam-composition
+mismatch, confirmed retired and replaced by the ratified pull/compose model
+on both documents). Recommended (advisory) items from the prior pass are
+addressed as a side effect (Score Query API subsection now exists at
+§ Detailed Rules 10a). No new blocking or advisory items surfaced by this
+focused re-review.
+
+**Summary**: The seam reconciliation composes correctly. `scoring-stars.md`
+and `level-objectives.md` now declare and consume an identical two-seam pull
+contract (`get_current_score()`, `get_score_results()`), the `ResultsData`
+field mapping is complete and phantom-free against both `ScoreResults` and
+`screen-flow.md` §11's declared seam, `closest_miss_summary` ownership is
+consistent across all three documents, and both changelogs accurately
+describe what is on disk. This document's `*Status:*` header is updated to
+`Reviewed — APPROVED (re-review, 2026-07-18)`.
