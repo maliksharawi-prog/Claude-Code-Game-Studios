@@ -1,14 +1,15 @@
 # Juice Layer — VFX & Audio Hooks
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see
+`design/gdd/reviews/juice-layer-review-log.md`*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Presentation · Priority: MVP · Phase: MVP · Category: Feel*
 *Author: systems-designer*
 *Depends On: Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED), Special
-Candies & Combo Matrix (`design/gdd/special-candies.md`, not yet authored — forward
-dependency), Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, not yet
-authored — forward dependency), Touch & Input System (`design/gdd/touch-input.md`,
+Candies & Combo Matrix (`design/gdd/special-candies.md`, Draft — forward
+dependency), Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, Draft —
+forward dependency), Touch & Input System (`design/gdd/touch-input.md`,
 APPROVED), Save & Persistence (`design/gdd/save-persistence.md`, Draft), Game
 UI/Screens Flow (`design/gdd/screen-flow.md`, Draft)*
 *Depended On By: Game UI/Screens Flow (Draft — hosts the Results Win screen this
@@ -297,7 +298,7 @@ opening should never shout an escalation the player did nothing to earn
 
 The displayed "×N" suffix (e.g. "Sweet! ×2") is a **presentation-layer
 readout of `chain_index` itself**, not a claim about score value — Scoring &
-Star Thresholds (forward dependency, not yet authored) owns the actual point
+Star Thresholds (`scoring-stars.md`, Draft, forward dependency) owns the actual point
 multiplier. If Scoring's eventual multiplier ever numerically diverges from
 `chain_index`, the callout's "×N" readout should switch to read Scoring's
 value instead; that substitution is a forward seam, not a redesign, since
@@ -475,12 +476,15 @@ The Juice Layer therefore owns a second, independent signal:
 
 This is formalized as Formula 5. It is designed as a **direct extension**
 of `screen-flow.md`'s own Formula 5 (`effective_board_input_enabled =
-board_engine_ready AND NOT overlay_is_active`), adding `AND NOT
-juice_input_lock` as a third, independently-owned veto term — following the
-exact same composition pattern that document already establishes for
-`overlay_is_active`. **This is a recommended follow-up to `screen-flow.md`,
-not made there, per this document's own file-edit scope** (see
-Cross-References for the one open contingency this dependency creates).
+(base_state==GAMEPLAY) AND board_input_enabled AND NOT overlay_is_active`),
+adding `AND NOT juice_input_lock` as a fourth, independently-owned veto term
+— following the exact same composition pattern that document already
+establishes for `overlay_is_active`. **This extension is now adopted in
+`screen-flow.md` itself, as of the 2026-07-18 cross-document review** — the
+follow-up this section originally proposed as "not made there" has been
+made there; `screen-flow.md`'s Formula 5 is the canonical definition, this
+document's own Formula 5 restates it for local reference (see
+Cross-References).
 
 ### 11. Declared Seams
 
@@ -538,7 +542,7 @@ prototype per `systems-index.md`) — the visual feedback for an ingredient
 being harvested from a match. Named only; not designed.
 
 **Score popup.** Reserved slot (`score_popup_slot`) for Scoring & Star
-Thresholds (#6, not yet authored) — the floating "+N" text popup on a
+Thresholds (#6, Draft) — the floating "+N" text popup on a
 clear. This document's `CLEAR_REVEAL` timing (Formula 2) is the presentation
 window that slot will animate within; the actual point value displayed is
 entirely Scoring's authority.
@@ -555,8 +559,10 @@ externally-owned ceilings — full per-screen transition choreography remains
 
 **Hard boundary — Fizz never renders on the live board.** Per
 `characters-and-tone.md` and `screen-flow.md` § 8, Fizz's mount points
-(Pre-Level Card, Results Win, Results Lose) are exclusively non-board
-screens Game UI/Screens Flow hosts. This is stated here explicitly as a
+(Pre-Level Card, Results Win, Results Lose, and World Map as an
+idle-animation-only companion with no line pool at MVP) are exclusively
+non-board screens Game UI/Screens Flow hosts. This is stated here explicitly
+as a
 **non-seam** — a boundary, not a hook — precisely to prevent a future
 addition from routing a mascot celebration through the Juice Layer's own
 board-event pipeline. No signal in § 4's vocabulary table ever triggers
@@ -599,7 +605,7 @@ clean, always-positive floor with no clamping logic required.
 `60 + 160 × 0.72⁰ = 220ms`. `chain_index = 2` → `60 + 160 × 0.72¹ ≈ 175.2ms`.
 `chain_index = 4` → `60 + 160 × 0.72³ ≈ 119.7ms`. `chain_index = 20`
 (`MAX_CASCADE_DEPTH`, `board-engine.md` Formula 6's recommended default) →
-`60 + 160 × 0.72¹⁹ ≈ 60.16ms` — already indistinguishable from the floor by
+`60 + 160 × 0.72¹⁹ ≈ 60.31ms` — already indistinguishable from the floor by
 the time a cascade reaches Board Engine's own defensive depth cap.
 
 ---
@@ -742,37 +748,46 @@ against Board Engine's own most extreme documented single-step case.
 
 ### Formula 5 — Effective Input Lock Composition
 
+**This document's veto term, composed into `screen-flow.md`'s canonical
+Formula 5.** As of the 2026-07-18 cross-document review, `screen-flow.md`
+§7/Formula 5 is the single canonical definition of
+`effective_board_input_enabled`, now adopting this term. Restated here for
+local reference, using the same symbol names as the canonical formula:
+
 **Named expression:**
 ```
 juice_input_lock = true, from the first Reveal Step dequeued
                     for a move, until its SETTLE_REVEAL step completes
 
-effective_board_input_enabled = board_engine_ready
+effective_board_input_enabled = (base_state == GAMEPLAY)
+                                 AND board_input_enabled
                                  AND NOT overlay_is_active
                                  AND NOT juice_input_lock
 ```
 
 | Symbol | Type | Range | Description |
 |---|---|---|---|
-| `board_engine_ready` | bool | `{true, false}` | Board Engine's own internal busy-state signal — becomes `true` synchronously the instant its resolution loop reaches `Idle`, independent of any presentation |
+| `base_state` | enum | — | `screen-flow.md`'s own term — `true` term only when `base_state == GAMEPLAY` (§1 there); restated here for completeness, not owned by this document |
+| `board_input_enabled` | bool | `{true, false}` | Board Engine's own internal busy-state signal (`board_input_enabled_changed`) — becomes `true` synchronously the instant its resolution loop reaches `Idle`, independent of any presentation |
 | `overlay_is_active` | bool | `{true, false}` | `screen-flow.md`'s own veto term — `true` whenever `PAUSE`/`SETTINGS` is open |
 | `juice_input_lock` | bool | `{true, false}` | This document's veto term (above) |
 | `effective_board_input_enabled` | bool | `{true, false}` | The value Touch & Input's Rule 4 busy-gate ultimately reads, per `screen-flow.md` § 7 |
 
-**Output range**: boolean; `true` only when all three independently-owned
+**Output range**: boolean; `true` only when all four independently-owned
 conditions hold simultaneously — the composition is a strict `AND`, so any
 single system's "busy" veto is sufficient to keep input locked, and no
 system needs to know about the others' internal state to correctly
 contribute its own term.
 
 **Worked example**: a player's swap has fully resolved inside Board Engine
-(`board_engine_ready = true`, synchronously, the same frame the swap was
-submitted); no overlay is open (`overlay_is_active = false`); the Juice
-Layer is still on cascade step 3 of a 4-step Reveal Queue
-(`juice_input_lock = true`). `effective_board_input_enabled = true AND
-true AND false = false` — the player cannot fire a new swap yet, even
-though Board Engine itself is already idle, precisely the scenario the task
-brief's "input locked during resolution replay" requirement describes.
+(`board_input_enabled = true`, synchronously, the same frame the swap was
+submitted); `base_state = GAMEPLAY`; no overlay is open
+(`overlay_is_active = false`); the Juice Layer is still on cascade step 3
+of a 4-step Reveal Queue (`juice_input_lock = true`).
+`effective_board_input_enabled = true AND true AND true AND NOT true =
+false` — the player cannot fire a new swap yet, even though Board Engine
+itself is already idle, precisely the scenario the task brief's "input
+locked during resolution replay" requirement describes.
 `effective_board_input_enabled` only flips `true` once `SETTLE_REVEAL`
 completes and `juice_input_lock` clears.
 
@@ -839,8 +854,8 @@ must re-run this check before shipping.
 | System | Direction | Nature of Dependency |
 |---|---|---|
 | Match-3 Board Engine (`board-engine.md`, APPROVED) | Juice Layer depends on it | Consumes the full signal catalog (§ Detailed Rules 7) and its two documented ordering guarantees; `PieceSnapshot` payloads feed the Shadow Board Model (§ 2); `chain_index`/`trigger_source` drive pacing and milestone suppression; column-segment definitions (Formula 3 there) feed fall-distance derivation (Formula 2 here); `max_cells_per_step`/`MAX_CASCADE_DEPTH` (Formulas 5/6 there) are consumed as this document's own worst-case formula inputs (Formula 4 here). **This document fulfills the reciprocal note `board-engine.md`'s own Dependencies table requested** ("when authored, its Dependencies section must list this document"). |
-| Special Candies & Combo Matrix (`special-candies.md`, not yet authored, forward) | Juice Layer will depend on it | `special_type` vocabulary beyond MVP's striped/color-bomb pair, and the special-×-special combo matrix that fills § 11's reserved combo slots. **Recommended**: its Dependencies section list this document when authored, confirming its combo outputs against § 11's named slots. |
-| Scoring & Star Thresholds (`scoring-stars.md`, not yet authored, forward) | Juice Layer will depend on it (soft) | The eventual score-multiplier value for the cascade callout's "×N" readout (§ 5, currently a `chain_index` placeholder), and `stars_earned`/`score_earned` for the star-ceremony seam (§ 11) and the score-popup seam. **Recommended**: its Dependencies section list this document. |
+| Special Candies & Combo Matrix (`special-candies.md`, Draft, forward) | Juice Layer will depend on it | `special_type` vocabulary beyond MVP's striped/color-bomb pair, and the special-×-special combo matrix that fills § 11's reserved combo slots. Cross-checked § 11's combo-slot table (`combo_stripe_stripe`, `combo_stripe_bomb`, `combo_bomb_bomb` at MVP; the three `WRAPPED` combos at Vertical Slice) against `special-candies.md`'s own actual combo matrix (Bomb+Bomb, Bomb+Striped, Striped+Striped at MVP; `WRAPPED` explicitly reserved/unimplemented) — confirmed a matching set, no drift found. **Recommended**: its Dependencies section list this document when authored, confirming its combo outputs against § 11's named slots. |
+| Scoring & Star Thresholds (`scoring-stars.md`, Draft, forward) | Juice Layer will depend on it (soft) | The eventual score-multiplier value for the cascade callout's "×N" readout (§ 5, currently a `chain_index` placeholder), and `stars_earned`/`score_earned` for the star-ceremony seam (§ 11) and the score-popup seam. **Recommended**: its Dependencies section list this document. |
 | Touch & Input System (`touch-input.md`, APPROVED) | Mutual, routed through Game UI/Screens Flow | Touch & Input's Rule 4 busy-gate ultimately reads the composed `effective_board_input_enabled` value (`screen-flow.md` § 7, Formula 5 there); this document supplies the `juice_input_lock` term recommended for that composition (Formula 5 here). `touch-input.md` § 7 already names the Juice Layer as reduced-motion's owner and flags a future raw-drag-position signal as this document's forward scope — both discharged/acknowledged here. |
 | Save & Persistence (`save-persistence.md`, Draft) | Juice Layer depends on it | Reads `haptics_enabled`, `reduced_motion_enabled`, `sfx_enabled`, `music_enabled` from the player profile's Settings sub-schema; never writes to any of them (Settings screen owns writes, per `screen-flow.md`'s Data Contract). **Recommended**: its Dependencies section list this document as a reader. |
 | Game UI/Screens Flow (`screen-flow.md`, Draft) | Mutual | Screen Flow hosts the `RESULTS_WIN` screen this document's star-ceremony content plays on (§ 11); Screen Flow's Formula 5 is recommended to incorporate this document's `juice_input_lock` term (§ 10, Formula 5 here — not made in `screen-flow.md`, per this document's own file-edit scope); Screen Flow owns every Fizz mount point, which this document explicitly never renders inside (§ 11, hard boundary). **Recommended**: its Dependencies section list this document, and its Formula 5 be revised per § 10's proposal. |
@@ -948,7 +963,7 @@ a mocked Board Engine event stream, no real timers or RNG required):
       (§ 2, § 10).
 - [ ] Formula 1 regression: `inter_step_beat_ms(1) = 220`,
       `inter_step_beat_ms(2) ≈ 175.2`, `inter_step_beat_ms(4) ≈ 119.7`,
-      `inter_step_beat_ms(20) ≈ 60.16`, using default Tuning Knobs, each
+      `inter_step_beat_ms(20) ≈ 60.31`, using default Tuning Knobs, each
       within a `0.1ms` epsilon.
 - [ ] Formula 2 regression: `fall_reveal_ms(8) = 400` (clamped),
       `total_presentation_ms(4) ≈ 2617.8` reproduces the documented worked
@@ -961,10 +976,10 @@ a mocked Board Engine event stream, no real timers or RNG required):
       `estimated_draw_calls = 67`, LOD Tier 2 selected, `final_particles =
       664` (normal motion) and `332` (reduced motion).
 - [ ] Formula 5 regression: `effective_board_input_enabled` evaluates
-      `false` when `juice_input_lock = true` regardless of the other two
-      terms, and `true` only when all three of `board_engine_ready`,
-      `NOT overlay_is_active`, and `NOT juice_input_lock` hold
-      simultaneously.
+      `false` when `juice_input_lock = true` regardless of the other three
+      terms, and `true` only when all four of `base_state == GAMEPLAY`,
+      `board_input_enabled`, `NOT overlay_is_active`, and
+      `NOT juice_input_lock` hold simultaneously.
 - [ ] Formula 6 regression: the fastest-paced default-Tuning-Knob scenario
       reproduces `pulse_frequency_hz ≈ 2.6` and confirms
       `2.6 ≤ FLASH_SAFETY_MAX_HZ (3)`.
@@ -1033,8 +1048,8 @@ a mocked Board Engine event stream, no real timers or RNG required):
 | This Document References | Target | Specific Element | Nature |
 |---|---|---|---|
 | `board_reshuffled` payload-sufficiency Open Question | `design/gdd/board-engine.md` | Open Questions table, row 1 ("Does `board_reshuffled`'s `attempts_used`-only payload need per-cell reassignment data...") | **Resolved here** (§ 2, § 3, Edge Cases): the input-lock policy (§ 10) guarantees no board mutation occurs between `board_reshuffled` firing and this document's (delayed) presentation of it, so one live `get_piece_at()` query at that specific moment is safe and sufficient — no payload expansion needed. **Contingent** on `screen-flow.md` actually adopting this document's recommended Formula 5 extension (§ 10) — see Open Questions below. |
-| `piece_id` rationale vs. actual `PieceSnapshot` schema gap | `design/gdd/board-engine.md` | § Detailed Rules 1 (`Piece.piece_id`'s stated rationale: "Exists so the Juice Layer can animate one persistent visual object through gravity moves") vs. § Detailed Rules 7 (`PieceSnapshot = {cell, color, special_type}` — `piece_id` is never actually included in any signal payload) | **Flagged, not resolved here** — this document's Shadow Board Model (§ 2) and gravity re-derivation work correctly without `piece_id` (a freshly-instantiated sprite with identical `color`/`special_type` art is visually indistinguishable from a persistently-tracked one), so this is a quality-of-implementation gap, not a blocking one. Recommend `board-engine.md` add `piece_id` to `PieceSnapshot` in its next revision so a future implementation can track one continuous visual object through a fall rather than recreating it — see Open Questions. |
-| `effective_board_input_enabled` composition | `design/gdd/screen-flow.md` | § 7 and Formula 5 (`board_engine_ready AND NOT overlay_is_active`) | This document's § 10/Formula 5 proposes extending that formula with a third term, `AND NOT juice_input_lock` — a recommended follow-up, not made in `screen-flow.md` itself, per this document's file-edit scope. |
+| `piece_id` rationale vs. actual `PieceSnapshot` schema gap | `design/gdd/board-engine.md` | § Detailed Rules 1 (`Piece.piece_id`'s stated rationale: "Exists so the Juice Layer can animate one persistent visual object through gravity moves") vs. § Detailed Rules 7 (`PieceSnapshot = {cell, color, special_type}` — `piece_id` is never actually included in any signal payload) | **Flagged, adjudicated in the 2026-07-18 cross-document review, not blocking.** Independently re-derived this document's own conclusion: gravity compaction preserves relative order within a segment (§ 2's "Gravity re-derivation" — pieces settle without reordering), so reconstructing "which surviving piece moves to which new cell" from the Shadow Board Model's ordered cell list alone requires no persistent ID to disambiguate two same-colored pieces — position-preserving compaction already resolves the mapping uniquely. This document's Shadow Board Model (§ 2) and gravity re-derivation therefore work correctly without `piece_id` (a freshly-instantiated sprite with identical `color`/`special_type` art is visually indistinguishable from a persistently-tracked one) — confirmed a quality-of-implementation gap, not a correctness gap, and every event the Shadow Board Model needs is otherwise present in the signal catalog with sufficient payload. Recommend `board-engine.md` add `piece_id` to `PieceSnapshot` in its next revision so a future implementation can track one continuous visual object through a fall rather than recreating it — see Open Questions. |
+| `effective_board_input_enabled` composition | `design/gdd/screen-flow.md` | § 7 and Formula 5 (now `(base_state==GAMEPLAY) AND board_input_enabled AND NOT overlay_is_active AND NOT juice_input_lock`) | **Resolved** (2026-07-18) — this document's § 10/Formula 5 proposed extending that formula with the `juice_input_lock` term; `screen-flow.md`'s Formula 5 now adopts it as the canonical, 4-term definition. |
 | Reduced-motion ownership and future raw-drag-position signal | `design/gdd/touch-input.md` | § 7 Accessibility ("owned by the Juice Layer... noted here only to make the dependency boundary explicit"); § Detailed Rules 3 ("a separate, additive raw-position signal... future scope for the Juice Layer") | Both references are acknowledged and (for reduced motion) discharged here (§ 8); the raw-drag-position signal remains explicitly out of this document's MVP scope, flagged for a future revision if a "candy follows the finger" juice effect is ever pursued. |
 | Animation timing targets, particle style, VFX standards | `design/art/art-bible.md` | Animation Style, VFX Standards, Accessibility sections | Consumed as authoritative external constants throughout Formulas and Tuning Knobs — this document never diverges from an already-approved art-bible value without flagging it explicitly. |
 | Settings sub-schema fields | `design/gdd/save-persistence.md` | § 2 `Settings` sub-schema (`haptics_enabled`, `reduced_motion_enabled`, `sfx_enabled`, `music_enabled`) | Storage/persistence owned there; visual/audio/haptic *meaning* owned here, exactly as that document's own field notes state. |
@@ -1047,7 +1062,7 @@ a mocked Board Engine event stream, no real timers or RNG required):
 
 | Question | Owner | Deadline | Resolution |
 |---|---|---|---|
-| Is this document's `board_reshuffled` live-query resolution (Cross-References, row 1) actually safe once `screen-flow.md` is reviewed, given it depends on Formula 5's `juice_input_lock` term being adopted there? If `screen-flow.md` ships without that extension, does `board-engine.md`'s Open Question reopen? | systems-designer | At `screen-flow.md`'s next review pass | — |
+| Is this document's `board_reshuffled` live-query resolution (Cross-References, row 1) actually safe once `screen-flow.md` is reviewed, given it depends on Formula 5's `juice_input_lock` term being adopted there? If `screen-flow.md` ships without that extension, does `board-engine.md`'s Open Question reopen? | systems-designer | At `screen-flow.md`'s next review pass | **Resolved** (2026-07-18) — `screen-flow.md`'s Formula 5 now adopts the `juice_input_lock` term as part of the same cross-document review pass. The reshuffle live-query safety argument is confirmed valid; `board-engine.md`'s Open Question does not reopen. |
 | Should `board-engine.md` add `piece_id` to `PieceSnapshot` so a future implementation can track one continuous visual object through a gravity fall, closing the gap between § Detailed Rules 1's stated rationale and § Detailed Rules 7's actual schema? | systems-designer | At `board-engine.md`'s next review pass | — |
 | Should the cascade-callout text pool (§ 5) be authored by `narrative-director` before MVP content lock, or is the prototype-validated placeholder ("Sweet!" / "Delicious!" / "Spectacular!") acceptable to ship as-is? | narrative-director / game-designer | Before Vertical Slice content pass | — |
 | Should `JUICE_VFX_DRAW_CALL_BUDGET` (40) and `PARTICLES_PER_BATCH` (20) be reconciled with an actual profiled measurement once real particle assets and atlas layout exist, mirroring `board-engine.md` Formula 6's own "heuristic, not exact enumeration" caveat? | technical-artist | Post-Vertical-Slice performance validation | — |
