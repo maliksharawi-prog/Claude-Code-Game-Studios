@@ -120,14 +120,61 @@
   @keyframes particle { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)} }
   #game-footer { width:100%; display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
   #btn-quit,#btn-sound { background:rgba(255,248,239,.9); border:none; border-radius:12px; padding:8px 14px; color:#6b4226; font-weight:700; cursor:pointer; font-size:13px; box-shadow:0 3px 8px rgba(0,0,0,.2); }
+  /* ---------- visual depth pass (design/quick-specs/visual-depth-pass.md) ---------- */
+  #bg-layers { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+  .hill { position:absolute; left:-25%; width:150%; height:34%; border-radius:50% 50% 0 0;
+          background:radial-gradient(ellipse at 50% 100%, rgba(90,27,184,.55), rgba(90,27,184,0) 70%); }
+  .hill.back { bottom:-6%; animation:drift 46s ease-in-out infinite alternate; }
+  .hill.front { bottom:-14%; background:radial-gradient(ellipse at 50% 100%, rgba(214,51,132,.5), rgba(214,51,132,0) 70%);
+                animation:drift 30s ease-in-out infinite alternate-reverse; }
+  @keyframes drift { to { transform:translateX(5%); } }
+  .bokeh { position:absolute; bottom:-6vh; border-radius:50%; pointer-events:none;
+           background:radial-gradient(circle, rgba(255,255,255,.5), rgba(255,255,255,0) 70%);
+           animation:floaty linear infinite; }
+  @keyframes floaty { to { transform:translateY(-112vh); } }
+  #vignette { position:fixed; inset:0; pointer-events:none; z-index:0;
+              background:radial-gradient(ellipse at 50% 38%, transparent 55%, rgba(40,5,60,.38)); }
+  #app { z-index:1; }
+  #board { border:5px solid rgba(255,248,239,.5);
+           box-shadow:0 12px 34px rgba(0,0,0,.4), inset 0 3px 10px rgba(255,255,255,.3), inset 0 -8px 16px rgba(70,8,64,.3); }
+  .cellwell { position:absolute; border-radius:12%; background:rgba(255,255,255,.07);
+              box-shadow:inset 0 2px 5px rgba(70,8,64,.14); pointer-events:none; }
+  .tile svg { transition:transform .12s ease; }
+  .tile:active svg { transform:scale(.9); }
+  @media (hover:hover) { .tile:hover svg { filter:brightness(1.1); } }
+  .tile.bomb svg { animation:bombglow 1.6s ease-in-out infinite; }
+  @keyframes bombglow { 50% { filter:drop-shadow(0 0 9px rgba(255,244,184,.95)); } }
+  .tile.striped svg { animation:shimmer 2.4s ease-in-out infinite; }
+  @keyframes shimmer { 50% { filter:brightness(1.18); } }
+  .tile.drop-in svg { animation:dropin .5s cubic-bezier(.3,1.2,.5,1); }
+  @keyframes dropin { 0%,70%{transform:scaleY(1)} 84%{transform:scaleY(.86) scaleX(1.1)} 100%{transform:scale(1)} }
+  .burst { position:absolute; width:120px; height:120px; margin:-60px 0 0 -60px; border-radius:50%; pointer-events:none; z-index:4;
+           background:radial-gradient(circle, rgba(255,244,184,.85), rgba(255,217,61,.35) 45%, transparent 70%);
+           animation:burst .38s ease-out forwards; }
+  @keyframes burst { from{transform:scale(.25); opacity:1;} to{transform:scale(1.5); opacity:0;} }
+  .fizz-anim { animation:fizzbob 2.8s ease-in-out infinite; transform-origin:50% 60%; }
+  @keyframes fizzbob { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-6px) rotate(2deg)} }
+  .fizz-bounce { animation:fizzbounce .55s cubic-bezier(.3,1.6,.5,1) !important; }
+  @keyframes fizzbounce { 0%{transform:scale(1)} 40%{transform:scale(1.25) rotate(6deg)} 100%{transform:scale(1)} }
+  #map-fizz { pointer-events:auto; cursor:pointer; }
+  .path-row { display:flex; justify-content:center; }
+  .path-dots { color:rgba(255,248,239,.75); font-size:16px; letter-spacing:6px; line-height:1; padding:1px 0;
+               text-shadow:0 1px 2px rgba(0,0,0,.3); }
+  .star-pop { display:inline-block; animation:starpop .5s cubic-bezier(.3,1.5,.5,1) backwards; }
+  @keyframes starpop { 0%{transform:scale(0) rotate(-40deg)} 60%{transform:scale(1.35)} 100%{transform:scale(1)} }
+  .btn, #btn-quit, #btn-sound, .map-node { transition:transform .1s ease; }
+  .map-node:active { transform:scale(.92); }
   @media (prefers-reduced-motion: reduce) {
     .tile { transition-duration:.06s,.08s; }
     .map-node.frontier,#hud-moves.low .v { animation:none; }
-    .particle { display:none; }
+    .particle,.bokeh,.hill,.burst { display:none; }
+    .tile.bomb svg,.tile.striped svg,.tile.drop-in svg,.fizz-anim { animation:none; }
   }
 </style>
 </head>
 <body>
+<div id="bg-layers"><div class="hill back"></div><div class="hill front"></div></div>
+<div id="vignette"></div>
 <div id="app">
 
 <svg width="0" height="0" style="position:absolute">
@@ -142,6 +189,7 @@
 
   <!-- Fruit roster (founder direction 2026-07-18): strawberry, orange slice, lemon, apple, grape bunch -->
   <g id="candy-0">
+    <ellipse cx="50" cy="94" rx="18" ry="4" fill="rgba(60,10,50,.25)"/>
     <path id="body-0" d="M50 24 C36 14 14 22 16 44 C18 66 38 84 50 92 C62 84 82 66 84 44 C86 22 64 14 50 24 Z" fill="url(#g-c0)"/>
     <path d="M50 22 C44 12 38 10 30 12 C38 16 40 20 41 25 Z" fill="#57bf42"/>
     <path d="M50 22 C56 12 62 10 70 12 C62 16 60 20 59 25 Z" fill="#57bf42"/>
@@ -154,6 +202,7 @@
   </g>
   <clipPath id="clip-0"><use href="#body-0"/></clipPath>
   <g id="candy-1">
+    <ellipse cx="50" cy="95" rx="26" ry="4.5" fill="rgba(60,10,50,.25)"/>
     <circle id="body-1" cx="50" cy="50" r="41" fill="url(#g-c1)"/>
     <circle cx="50" cy="50" r="34" fill="#ffd9a8"/>
     <g fill="#ff9f45">
@@ -166,6 +215,7 @@
   </g>
   <clipPath id="clip-1"><use href="#body-1"/></clipPath>
   <g id="candy-2">
+    <ellipse cx="50" cy="85" rx="28" ry="4.5" fill="rgba(60,10,50,.25)"/>
     <path id="body-2" d="M14 50 C14 32 30 22 50 22 C70 22 86 32 86 50 C86 68 70 78 50 78 C30 78 14 68 14 50 Z M8 50 C10 46 14 46 16 50 C14 54 10 54 8 50 Z M92 50 C90 46 86 46 84 50 C86 54 90 54 92 50 Z" fill="url(#g-c2)"/>
     <path d="M10 50 C12 47 14 47 15 50 C14 53 12 53 10 50 Z" fill="#e0b91e"/>
     <path d="M90 50 C88 47 86 47 85 50 C86 53 88 53 90 50 Z" fill="#e0b91e"/>
@@ -174,6 +224,7 @@
   </g>
   <clipPath id="clip-2"><use href="#body-2"/></clipPath>
   <g id="candy-3">
+    <ellipse cx="50" cy="92" rx="26" ry="4.5" fill="rgba(60,10,50,.25)"/>
     <path id="body-3" d="M50 26 C40 16 18 20 16 44 C15 62 30 84 42 86 C46 87 48 84 50 84 C52 84 54 87 58 86 C70 84 85 62 84 44 C82 20 60 16 50 26 Z" fill="url(#g-c3)"/>
     <path d="M50 26 C49 18 51 12 54 8" stroke="#8a5a2b" stroke-width="5" fill="none" stroke-linecap="round"/>
     <path d="M54 14 C62 8 72 10 76 14 C70 20 60 20 54 14 Z" fill="#57bf42"/>
@@ -182,6 +233,7 @@
   </g>
   <clipPath id="clip-3"><use href="#body-3"/></clipPath>
   <g id="candy-4">
+    <ellipse cx="50" cy="97" rx="18" ry="3.5" fill="rgba(60,10,50,.25)"/>
     <path d="M50 18 C49 12 51 8 54 5" stroke="#8a5a2b" stroke-width="5" fill="none" stroke-linecap="round"/>
     <g>
       <circle cx="36" cy="30" r="15" fill="url(#g-c4)"/><circle cx="64" cy="30" r="15" fill="url(#g-c4)"/>
@@ -199,7 +251,7 @@
   </clipPath>
   <g id="stripes-h"><g opacity=".9" fill="#fff8ef"><rect x="4" y="27" width="92" height="8" rx="4"/><rect x="4" y="46" width="92" height="8" rx="4"/><rect x="4" y="65" width="92" height="8" rx="4"/></g></g>
   <g id="stripes-v"><g opacity=".9" fill="#fff8ef"><rect x="27" y="4" width="8" height="92" rx="4"/><rect x="46" y="4" width="8" height="92" rx="4"/><rect x="65" y="4" width="8" height="92" rx="4"/></g></g>
-  <g id="candy-bomb"><circle cx="50" cy="50" r="42" fill="url(#g-bomb)"/>
+  <g id="candy-bomb"><ellipse cx="50" cy="95" rx="26" ry="4.5" fill="rgba(60,10,50,.3)"/><circle cx="50" cy="50" r="42" fill="url(#g-bomb)"/>
     <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="2" opacity=".35"/>
     <circle cx="50" cy="20" r="6" fill="#ff5d73"/><circle cx="76" cy="35" r="6" fill="#ff9f45"/><circle cx="76" cy="65" r="6" fill="#ffd93d"/>
     <circle cx="50" cy="80" r="6" fill="#7ddf64"/><circle cx="24" cy="65" r="6" fill="#b47aea"/><circle cx="24" cy="35" r="6" fill="#fff4b8"/>
@@ -221,7 +273,7 @@
     <div id="map-header"><h1>🍬 Sweet Cascade</h1><div class="total-stars">★ <span id="total-stars">0</span></div></div>
     <div id="region-title">Region 1 — Candy Kingdom Hub</div>
     <div id="map-path"></div>
-    <div id="map-fizz"><div class="bubble" id="map-fizz-line">Ready when you are!</div><svg viewBox="0 0 100 100"><use href="#fizz"/></svg></div>
+    <div id="map-fizz"><div class="bubble" id="map-fizz-line">Ready when you are!</div><svg class="fizz-anim" viewBox="0 0 100 100"><use href="#fizz"/></svg></div>
   </div>
 
   <!-- Gameplay -->
@@ -242,7 +294,7 @@
   <!-- Pre-level card -->
   <div class="overlay" id="prelevel">
     <div class="card">
-      <div class="fizz-holder"><svg viewBox="0 0 100 100"><use href="#fizz"/></svg></div>
+      <div class="fizz-holder"><svg class="fizz-anim" viewBox="0 0 100 100"><use href="#fizz"/></svg></div>
       <h2 id="pre-title">Level 1</h2>
       <div class="fizz-line" id="pre-fizz"></div>
       <div class="obj-list" id="pre-objectives"></div>
@@ -254,7 +306,7 @@
   <!-- Results -->
   <div class="overlay" id="results">
     <div class="card">
-      <div class="fizz-holder"><svg viewBox="0 0 100 100"><use href="#fizz"/></svg></div>
+      <div class="fizz-holder"><svg class="fizz-anim" viewBox="0 0 100 100"><use href="#fizz"/></svg></div>
       <h2 id="res-title"></h2>
       <div class="fizz-line" id="res-fizz"></div>
       <div class="stars-big" id="res-stars"></div>
@@ -369,6 +421,8 @@ function updateTileArt(t){
     if(t.special===SPECIAL.STRIPE_H) inner+=`<g clip-path="url(#clip-${t.color})"><use href="#stripes-h"/></g>`;
     if(t.special===SPECIAL.STRIPE_V) inner+=`<g clip-path="url(#clip-${t.color})"><use href="#stripes-v"/></g>`;
   }
+  t.el.classList.toggle('bomb', t.special===SPECIAL.BOMB);
+  t.el.classList.toggle('striped', t.special===SPECIAL.STRIPE_H||t.special===SPECIAL.STRIPE_V);
   t.el.innerHTML=`<svg viewBox="0 0 100 100">${inner}</svg>`;
 }
 function place(t,r,c){ t.r=r;t.c=c;S.grid[r][c]=t; render(t); }
@@ -476,12 +530,12 @@ function tallyCollect(color,n){ for(const o of S.objectives){ if(o.t==='collect'
 async function clearAndFall(cleared,spawns,chain){
   for(const [k,sp] of spawns){ const r=Math.floor(k/16),c=k%16; const t=occ(r,c);
     if(t){ t.special=sp.type; if(sp.color===null){ t.color=-1; } updateTileArt(t); t.el.classList.add('spawnflash'); setTimeout(()=>t.el.classList.remove('spawnflash'),460); SFX.spawn(); } }
-  let popped=0;
+  let popped=0,sr=0,sc=0;
   for(const k of cleared){ const r=Math.floor(k/16),c=k%16; const t=occ(r,c); if(!t)continue;
-    S.grid[r][c]=null; popped++;
+    S.grid[r][c]=null; popped++; sr+=r; sc+=c;
     spawnParticles(t); t.el.classList.add('pop'); const el=t.el; setTimeout(()=>el.remove(),220);
   }
-  if(popped){ SFX.pop(chain); await sleep(220); }
+  if(popped){ spawnBurst(sr/popped,sc/popped); SFX.pop(chain); await sleep(220); }
   // gravity per column segments (masked cells block; candy never falls through voids)
   for(let c=0;c<S.size;c++){
     let segStart=0;
@@ -494,6 +548,7 @@ async function clearAndFall(cleared,spawns,chain){
           if(t){ if(write!==r){ S.grid[r][c]=null; t.r=write; S.grid[write][c]=t; render(t); } write--; } }
         let above=-1;
         for(let r=write;r>=segStart;r--){ const t=makeTile(rand(S.pool));
+          t.el.classList.add('drop-in'); setTimeout(()=>t.el.classList.remove('drop-in'),620);
           t.c=c; t.r=(segStart-1)+(above--)-0; render(t);   // spawn above the segment
           S.grid[r][c]=t; t.r=r;
           requestAnimationFrame(()=>requestAnimationFrame(()=>render(t)));
@@ -602,12 +657,17 @@ function buildMap(){
   const path=$('map-path'); path.innerHTML='';
   LEVELS.forEach((L,i)=>{
     const row=document.createElement('div'); row.className='map-node-row';
+    row.style.transform=`translateX(${i%2?60:-60}px)`;
     const node=document.createElement('div');
     const rec=levelRecord(L.id), unlocked=isUnlocked(i);
     node.className='map-node'+(unlocked?'':' locked')+(unlocked&&rec.stars===0?' frontier':'');
     node.innerHTML=`<div class="num">${L.n}</div><div class="stars">${rec.stars>0?'★'.repeat(rec.stars):(unlocked?'· · ·':'🔒')}</div>`;
     if(unlocked)node.addEventListener('click',()=>openPreLevel(i,false));
     row.appendChild(node); path.appendChild(row);
+    if(i<LEVELS.length-1){ const pr=document.createElement('div'); pr.className='path-row';
+      const d=document.createElement('div'); d.className='path-dots'; d.textContent='· · ·';
+      d.style.transform=`rotate(${i%2?-30:30}deg)`; pr.appendChild(d); path.appendChild(pr);
+    }
   });
   $('total-stars').textContent=totalStars();
   $('map-fizz-line').textContent=fizzLine('intro');
@@ -641,6 +701,10 @@ function startLevel(i){
   for(let r=0;r<S.size;r++)for(let c=0;c<S.size;c++)if(masked(r,c)){
     const v=document.createElement('div'); v.className='voidcell';
     v.style.cssText=`width:${p}%;height:${p}%;left:${c*p}%;top:${r*p}%;`; boardEl.appendChild(v);
+  }
+  for(let r=0;r<S.size;r++)for(let c=0;c<S.size;c++){ if(masked(r,c)||(r+c)%2)continue;
+    const w=document.createElement('div'); w.className='cellwell';
+    w.style.cssText=`width:${p}%;height:${p}%;left:${c*p}%;top:${r*p}%;`; boardEl.appendChild(w);
   }
   for(let r=0;r<S.size;r++)for(let c=0;c<S.size;c++){ if(masked(r,c))continue;
     let col; do{ col=rand(S.pool); S.grid[r][c]={color:col,special:0}; } while(wouldMatch(r,c)); S.grid[r][c]=null;
@@ -677,7 +741,7 @@ function finishLevel(won){
   const el=$('res-stars'); el.innerHTML='';
   setTimeout(()=>{
     let html='';
-    for(let k=0;k<3;k++){ html+=`<span class="${k<stars?'':'dim'}">★</span>`; }
+    for(let k=0;k<3;k++){ html+=`<span class="star-pop ${k<stars?'':'dim'}" style="animation-delay:${k*0.18}s">★</span>`; }
     el.innerHTML=html;
     if(won)for(let k=0;k<stars;k++)SFX.star(k);
   },350);
@@ -700,6 +764,12 @@ $('btn-sound').addEventListener('click',()=>{ profile.settings.sound=!profile.se
 function showCallout(text){ const el=$('callout'); el.textContent=text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
 function showToastCallout(t){ showCallout(t); }
 const TINTS=['#ff5d73','#ff9f45','#ffd93d','#7ddf64','#b47aea'];
+function spawnBurst(r,c){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const p=cellPct(); const d=document.createElement('div'); d.className='burst';
+  d.style.left=((c+0.5)*p)+'%'; d.style.top=((r+0.5)*p)+'%';
+  boardEl.appendChild(d); setTimeout(()=>d.remove(),420);
+}
 function spawnParticles(t){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   const rect=t.el.getBoundingClientRect(), host=boardEl.getBoundingClientRect();
@@ -715,6 +785,19 @@ function spawnParticles(t){
 
 /* ---- boot ---- */
 loadProfile();
+(function(){ const bg=document.getElementById('bg-layers');
+  for(let i=0;i<10;i++){ const b=document.createElement('div'); b.className='bokeh';
+    const sz=8+Math.random()*26; b.style.width=b.style.height=sz+'px';
+    b.style.left=(Math.random()*100)+'%';
+    b.style.animationDuration=(18+Math.random()*22)+'s';
+    b.style.animationDelay=(-Math.random()*30)+'s';
+    bg.appendChild(b); } })();
+document.getElementById('map-fizz').addEventListener('pointerdown',()=>{
+  const sv=document.querySelector('#map-fizz svg');
+  sv.classList.remove('fizz-bounce'); void sv.offsetWidth; sv.classList.add('fizz-bounce');
+  document.getElementById('map-fizz-line').textContent=fizzLine('intro');
+  tone(880,.12,'sine',.1); tone(1320,.14,'sine',.08,.08);
+});
 $('btn-sound').textContent=profile.settings.sound?'🔊':'🔇';
 buildMap();
 
