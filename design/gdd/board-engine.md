@@ -1,6 +1,6 @@
 # Match-3 Board Engine
 
-*Status: Revised — blocking items resolved, awaiting re-review (2026-07-18)*
+*Status: Reviewed — APPROVED (re-review, 2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Core · Priority: MVP · Phase: MVP · Category: Gameplay*
@@ -717,8 +717,11 @@ player swaps `(1,4)` and `(2,4)` (red and green) — after the swap, column 4
 reads `row0=blue, row1=green, row2=red, row3=red, row4=red`: a new vertical
 run of three reds at rows 2–4.
 
-1. `swap_started(piece_a={cell:(1,4),color:2,special_type:0},
-   piece_b={cell:(2,4),color:0,special_type:0})` — the pre-swap snapshot.
+1. `swap_started(piece_a={cell:(1,4),color:0,special_type:0},
+   piece_b={cell:(2,4),color:2,special_type:0})` — the pre-swap snapshot
+   (`piece_a` is cell `(1,4)`'s pre-swap occupant, red(0); `piece_b` is cell
+   `(2,4)`'s pre-swap occupant, green(2) — matching the column's stated
+   pre-swap state above).
 2. `swap_accepted(cell_a=(1,4), cell_b=(2,4), trigger_source=SWAP_MATCH)`.
 3. `match_cleared(chain_index=1, cleared_pieces=[
    {cell:(2,4),color:0,special_type:0}, {cell:(3,4),color:0,special_type:0},
@@ -968,12 +971,12 @@ involved — this is a true worst case, not a heuristic. Bounded above by
 
 **Worked example**: `rows = cols = 9` → `max_cells_per_step = 81`. This is
 the number Board Engine's `match_cleared` signal could, in the absolute
-worst theoretical case, carry in `cleared_cells` for one event — the value
+worst theoretical case, carry in `cleared_pieces` for one event — the value
 against which the Juice Layer and the `≤100 draw calls during heaviest
 cascade` budget (`.claude/docs/technical-preferences.md`) must be
 cross-checked (via candy-sprite atlas batching, a Juice Layer
 implementation concern, not this document's). Board Engine's own
-obligation here ends at emitting the correct, complete `cleared_cells`
+obligation here ends at emitting the correct, complete `cleared_pieces`
 list every time, however large.
 
 ---
@@ -1219,7 +1222,7 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
       its neighbors' colors.
 - [ ] `test_l_shape_intersection_unions_into_one_clear_set`: a
       synthetic board with an intersecting horizontal + vertical run
-      produces exactly one `match_cleared` event whose `cleared_cells`
+      produces exactly one `match_cleared` event whose `cleared_pieces`
       contains the shared cell exactly once.
 
 **Extension Seams (§ Detailed Rules 3)**
@@ -1427,6 +1430,7 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 
 | Question | Owner | Deadline | Resolution |
 |---|---|---|---|
+| Does `board_reshuffled`'s `attempts_used`-only payload need per-cell reassignment data (e.g., an array of `{cell, color, special_type}`) to satisfy the same deferred-replay payload-sufficiency guarantee (§ Detailed Rules 13) Revision 2 added to `match_cleared`/`pieces_spawned`/`special_spawned`? | systems-designer | At `juice-layer.md` authoring, if reshuffle needs deferred-replay-safe rendering rather than a live synchronous `get_piece_at()` query (which remains valid immediately after `board_reshuffled` fires, since no other board-mutating signal intervenes before the following `board_input_enabled_changed(true)`) | — |
 | Should `GRAVITY_MODE`'s `fall_through_void` alternative ever be built as a real level-design mechanic ("portal tiles"), or should it be removed from Tuning Knobs entirely as speculative? | game-designer | Revisit at Alpha content planning, once more non-rectangular `cell_mask` levels exist to evaluate demand | — |
 | Should Board Engine's `BOARD_SIDE_MARGIN_PX`/`BOARD_TOP_ALLOCATION_PX`/`BOARD_BOTTOM_ALLOCATION_PX` constants move to a future `design/ux/hud.md` once that UX spec exists, to avoid two sources of truth for screen layout? | game-designer / ux-designer | At `design/ux/hud.md` authoring, if/when it supersedes these provisional values | — |
 | Does `level-data-format.md`'s Dependencies table need a follow-up correction removing `move_limit` from Board Engine's listed field consumption (§ Detailed Rules 2's flagged discrepancy)? | systems-designer | At next `level-data-format.md` review pass | **Resolved** — confirmed during this review (2026-07-18) that `level-data-format.md`'s Dependencies table already states Board Engine does not read `move_limit`; no further action needed. |
