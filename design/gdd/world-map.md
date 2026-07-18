@@ -10,12 +10,12 @@ is a visible, inspectable, authored star-count formula — never hidden
 manipulation and never a monetized bypass)*
 *Depends On: Level Data Format (`design/gdd/level-data-format.md`, APPROVED),
 Save & Persistence (`design/gdd/save-persistence.md`, Draft), Match-3 Board
-Engine (`design/gdd/board-engine.md`, NEEDS REVISION — manifest
+Engine (`design/gdd/board-engine.md`, APPROVED — manifest
 cross-validation only, no runtime dependency), Scoring & Star Thresholds
-(`design/gdd/scoring-stars.md`, #6, not yet authored — soft/forward
+(`design/gdd/scoring-stars.md`, #6, Draft — soft/forward
 dependency, see Dependencies)*
-*Depended On By: Game UI/Screens Flow (`design/gdd/screen-flow.md`, #10, not
-yet authored), Events/Theming Engine (`design/gdd/events-theming.md`, #13,
+*Depended On By: Game UI/Screens Flow (`design/gdd/screen-flow.md`, #10,
+Draft), Events/Theming Engine (`design/gdd/events-theming.md`, #13,
 Phase 3, forward dependency)*
 *Source: `design/gdd/systems-index.md` · `design/gdd/level-data-format.md` ·
 `design/gdd/board-engine.md` · `design/gdd/save-persistence.md` ·
@@ -271,9 +271,11 @@ pattern.
 level from Save & Persistence: `best_stars` (int, 0–3, already computed and
 persisted by the time World Map queries it). It never computes, weights,
 reinterprets, or second-guesses a star value itself — Scoring & Star
-Thresholds (#6, not yet authored) owns how a raw score becomes a star
-count; Level Objective & Move-Limit System (#7, not yet authored) owns
-calling `record_level_completion()` on a win. World Map's dependency on
+Thresholds (#6, Draft) owns how a raw score becomes a star
+count; Level Objective & Move-Limit System (#7, Draft) is expected to own
+calling `record_level_completion()` on a win — flagged as not yet
+confirmed by `level-objectives.md` itself as of the 2026-07-18 review, see
+Dependencies. World Map's dependency on
 those two systems is therefore **soft and indirect** — it depends only on
 the already-persisted output, never on their internal formulas. **Named
 seam, not designed here**: if a future system introduces additional
