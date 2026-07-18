@@ -1,6 +1,6 @@
 # Touch & Input System
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see `design/gdd/reviews/touch-input-review-log.md`*
 *Created: 2026-07-17*
 *Last Updated: 2026-07-17*
 *Layer: Foundation · Priority: MVP · Phase: MVP · Category: Core*
@@ -428,7 +428,7 @@ Format may introduce.
 | System | Direction | Nature of Dependency |
 |--------|-----------|-----------------------|
 | Match-3 Board Engine (`design/gdd/board-engine.md`, not yet authored) | Board Engine depends on this | Consumes `select_cell`, `swap_request(cell_a, cell_b)`, and `cancel` as the sole trigger for any board mutation; owns all swap validation, match detection, and simulation state, and owns/drives the `board_input_enabled` busy signal this document reads. **Reciprocal note**: when `board-engine.md` is authored, its Dependencies section must list this document and document how it consumes these three intents. |
-| Level Data Format (`design/gdd/level-data-format.md`, not yet authored) | This depends on it (data only) | Supplies board grid dimensions (`rows`, `cols`) needed for bounds-checking swipe targets (Formula 2) and computing `cell_size_px` (Formulas 1 and 3) at level load. Touch & Input reads dimensions only — never objective, blocker, or candy-palette data. |
+| Level Data Format (`design/gdd/level-data-format.md`) | This depends on it (data only) | Supplies board grid dimensions needed for bounds-checking swipe targets (Formula 2) and computing `cell_size_px` (Formulas 1 and 3) at level load — Level Data Format's `grid_height` maps to this document's `board_rows`, and `grid_width` maps to `board_cols` (row-major convention, §1). Touch & Input reads dimensions only — never objective, blocker, or candy-palette data. |
 | Game UI/Screens Flow (`design/gdd/screen-flow.md`, not yet authored) | Soft runtime dependency | Expected to co-own (alongside Board Engine) toggling `board_input_enabled` false during pause menus, results overlays, and any modal (Rule 4, Edge Case: modal mid-gesture). **Reciprocal note**: when `screen-flow.md` is authored, its Dependencies section must list this document and the `board_input_enabled` contract. |
 | `design/art/art-bible.md` (not a `design/gdd/` system) | This depends on it (constant only) | Supplies `visual_fill_ratio` (0.84, candy chip sizing) consumed in Formula 3. |
 | `.claude/docs/technical-preferences.md` (not a `design/gdd/` system) | This depends on it (constant + rule only) | Supplies `MIN_TOUCH_TARGET_PX` (44px, hard floor) and the "no hover-only interactions" rule enforced in Rule 6. |

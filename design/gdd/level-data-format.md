@@ -1,6 +1,6 @@
 # Level Data Format
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see `design/gdd/reviews/level-data-format-review-log.md`*
 
 > **Author**: systems-designer
 > **Last Updated**: 2026-07-17
@@ -312,7 +312,7 @@ expectation now so it isn't lost.
 
 | System | Direction | Nature of Dependency |
 |--------|-----------|---------------------|
-| RNG Service (#1, not yet written) | Anticipated | `rng_seed` will be consumed by whatever seed-set contract RNG Service formalizes; this document only defines the field, not the seeding mechanism. |
+| RNG Service (`design/gdd/rng-service.md`) | Anticipated | `rng_seed` is consumed per RNG Service's seed-set contract (Formulas F1–F3). Separately, `level_id` (a String here, format `<region_code>-<3-digit-sequence>`) must be resolved to a fixed, versioned ordinal integer via a level manifest before being passed to RNG Service's `start_level_session()`, per rng-service.md §3 and its Edge Cases — that resolution is expected to be owned by Match-3 Board Engine (the direct caller of RNG Service), not by this document. This document defines field shapes only, not the seeding mechanism or the manifest itself. |
 | Match-3 Board Engine (#4, not yet written) | Board Engine depends on this | Reads `grid_width`/`grid_height`, `cell_mask`, `pre_placed_pieces`, `color_pool`, and `move_limit` to bootstrap a playable board at level start. |
 | Special Candies & Combo Matrix (#5, not yet written) | Soft co-design (planned extension) | v1 intentionally omits pre-placed specials and blocker vocabulary (Section 6); v2 will extend `pre_placed_pieces` once that GDD defines the special-candy taxonomy. |
 | Scoring & Star Thresholds (#6, not yet written) | Soft co-design (planned extension) | `REFERENCE_SCORE_PER_MOVE` and `reference_max_score` (Formula A) are provisional placeholders owned here only until that GDD formalizes the authoritative point-value formula, at which point it should reconcile with or supersede these values. |
@@ -390,7 +390,7 @@ expectation now so it isn't lost.
 | `objectives` field consumption at runtime | `design/gdd/level-objectives.md` *(not yet written)* | Win/lose evaluation logic | Ownership handoff — this doc owns data shape only |
 | `grid_width`/`grid_height`/`cell_mask`/`color_pool`/`move_limit` consumption at bootstrap | `design/gdd/board-engine.md` *(not yet written)* | Board initialization | Data dependency |
 | `region`/`display_number`/`level_id` node-graph usage | `design/gdd/world-map.md` *(not yet written)* | Region roster, unlock gating | Data dependency |
-| `rng_seed` field semantics | `design/gdd/rng-service.md` *(not yet written)* | Seed-set contract | Rule dependency — provisional |
+| `rng_seed` field semantics; `level_id`'s String→integer resolution requirement | `design/gdd/rng-service.md` | Seed-set contract (Formulas F1–F3); integer `level_id` requirement (§3, Edge Cases) | Rule dependency |
 
 ---
 
@@ -402,4 +402,5 @@ expectation now so it isn't lost.
 | Should `region`'s value set be validated against a formal registry once one exists, rather than only checked for non-emptiness? | game-designer | At Level Progression / World Map (#11) authoring | — |
 | Should `display_number` ownership move from this schema to the World Map node graph once that system exists, to avoid two sources of truth for level ordering? | game-designer | At Level Progression / World Map (#11) authoring | — |
 | Does V18's Advisory (non-blocking) status get promoted to Blocking once Scoring & Star Thresholds (#6) supersedes `REFERENCE_SCORE_PER_MOVE` with an authoritative formula? | systems-designer | At Scoring & Star Thresholds (#6) authoring | — |
+| Does a Phase-3 level's authored `rng_seed >= 0` require a new RNG Service production entry point? `rng-service.md`'s only literal-seed API (`start_test_session()`) is documented as test/debug-only, and `start_daily_session()` does not read this field — neither currently composes with a per-level authored fixed seed. | systems-designer | Before Events/Theming Engine (#13) or any daily-challenge/event level authoring begins | — |
 | Is single-region board connectivity (V8) too restrictive for future "split board" level designs, or is that a real future need worth a v2 schema extension? | game-designer | Revisit at Alpha content planning (120-level scope) | — |

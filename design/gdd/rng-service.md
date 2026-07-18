@@ -1,6 +1,6 @@
 # RNG Service
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see `design/gdd/reviews/rng-service-review-log.md`*
 
 > **Layer**: Foundation · **Priority**: MVP · **Phase**: MVP · **Category**: Core
 > **Author**: systems-designer · **Last Updated**: 2026-07-17
@@ -209,7 +209,7 @@ design:**
   that level. No color is weighted up or down by scarcity on the current
   board, cascade state, or any other run-time signal.
 - The active color pool itself is **entirely owned by Level Data Format**
-  (its `candy_palette` field, once that schema is authored — see Dependencies).
+  (its `color_pool` field, schema v1, rule V11 — see Dependencies).
   RNG Service does not hardcode a color list; it receives `active_colors` as
   a caller-supplied parameter to `next_color()` (§6). This keeps the
   "5 colors at launch" value a *content* decision, not an RNG Service
@@ -218,7 +218,8 @@ design:**
   5 colors on an 8×8 board produced frequent, legible cascades in design
   analysis; 6 felt too sparse and was flagged as worth an A/B test later.
   This value lives in Tuning Knobs below and is confirmed/owned by
-  `level-data-format.md` when that document is authored.
+  `level-data-format.md`'s `color_pool` field (V11: 3–5 unique entries drawn
+  from the 5-color canonical roster in `design/art/art-bible.md`).
 - Non-color tiles (blockers, if any) are excluded from the refill
   distribution entirely — they are never a possible outcome of a
   `next_color()` draw. Blocker placement/behavior is Level Objective &
@@ -419,7 +420,7 @@ result    = active_colors[index]
 
 | Symbol | Type | Range | Source | Description |
 |--------|------|-------|--------|-------------|
-| active_colors | array | length ≥ 1 | caller, ultimately Level Data Format's `candy_palette` | The level's active color pool this session |
+| active_colors | array | length ≥ 1 | caller, ultimately Level Data Format's `color_pool` | The level's active color pool this session |
 | next_float(stream) | float | [0, 1) | stream's underlying draw | One uniform draw from the named stream |
 | pool_size | int | ≥ 1 | derived | Number of active colors |
 | result | element | one of `active_colors` | derived | The returned color, uniformly selected |
@@ -520,7 +521,7 @@ and implemented first (design order position #1), before Level Data Format
 
 | Parameter | Current Value | Safe Range | Effect of Increase | Effect of Decrease |
 |-----------|--------------|------------|-------------------|-------------------|
-| Active color pool size (`active_colors` length — owned by Level Data Format, consumed here via `next_color`) | 5 (launch default, from `prototypes/sweet-cascade-concept/REPORT.md` design analysis) | 3 – 8 | More colors = sparser matches, harder to spot cascades, lower cascade frequency (6 felt "too sparse" per prototype learnings) | Fewer colors = near-guaranteed matches on almost every swap, cascades feel automatic/unearned, low skill expression |
+| Active color pool size (`active_colors` length — owned by Level Data Format's `color_pool` field, consumed here via `next_color`) | 5 (launch default, from `prototypes/sweet-cascade-concept/REPORT.md` design analysis) | 3 – 8 (RNG Service technical ceiling; current authored content is capped at 3–5 by Level Data Format's V11 and the 5-color canonical roster in `design/art/art-bible.md` — 6–8 is unused headroom until the roster grows) | More colors = sparser matches, harder to spot cascades, lower cascade frequency (6 felt "too sparse" per prototype learnings) | Fewer colors = near-guaranteed matches on almost every swap, cascades feel automatic/unearned, low skill expression |
 | `ALGORITHM_VERSION` (mix32 finalizer version tag) | `"v1"` | Increment-only string/int tag; never reuse a retired version number | N/A — this is a compatibility tag, not a magnitude | N/A — changing the underlying finalizer without incrementing this breaks reproducibility of previously logged bug-repro seeds silently, which is the one outcome this knob exists to prevent |
 | Registered stream count (Stream Registry table, §2) | 2 active (`board-refill`, `special-drop`) + 2 reserved (`harvest`, `events`) | Unbounded, append-only | More streams = more parallel independent randomness sources for future features; negligible cost (each stream is a small state value) | Fewer/shared streams = risk of violating the isolation guarantee if two unrelated features are made to share one stream instead of getting their own row |
 | `attempt_number` reset policy | Resets to 1 only on fresh level entry from the map; does **not** persist across app relaunch mid-session | N/A — binary policy choice, not a numeric range | N/A | If changed to persist indefinitely across app restarts, this requires wiring RNG Service's session lifecycle into Save & Persistence — explicitly out of scope for MVP (see Edge Cases — app killed mid-level) |
