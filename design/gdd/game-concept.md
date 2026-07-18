@@ -183,7 +183,7 @@ inactive (or requires spamming invites to progress), we cut it.
 ### Anti-Pillars (What This Game Is NOT)
 
 - **NOT pay-to-win**: Monetization (when designed) must never sell guaranteed level completion; it would destroy Pillar 2 (Clever, Never Cheated).
-- **NOT a story game**: No dialogue trees, no narrative campaign — theming carries tone. Protects scope and Pillar 1 focus.
+- **NOT a story game**: No dialogue trees, no branching narrative campaign — theming carries tone. Protects scope and Pillar 1 focus. *Amended per founder directive (2026-07-18): light character dressing IS in scope — mascot guide characters, region personalities, and one-line flavor text framing levels and celebrations. Characters serve tone and warmth, never gate progression, and add no branching choices.*
 - **NOT real-time multiplayer**: All social features are asynchronous. Real-time netcode would blow scope and add nothing to the core fantasy.
 - **NOT a mechanic zoo**: Each region introduces at most ONE new mechanic. Depth comes from combinations, not from endless novelty (protects onboarding and Pillar 2).
 
