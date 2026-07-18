@@ -5,7 +5,7 @@
 > **GDD**: `design/gdd/rng-service.md` · `design/gdd/level-data-format.md` · `design/gdd/save-persistence.md` · `design/gdd/world-map.md` (W6–W7)
 > **Architecture Module**: `SweetCascade.Domain` foundation types + `SweetCascade.Editor` manifest tool — RngService, LevelData schema + `Validate()`, SaveModel + serializer (canonical bytes + FNV-1a + monotonic merge), LevelManifest POCO + generation tool + W6–W7 cross-validation
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories domain-foundation`
+> **Stories**: 14 stories created 2026-07-18 (see Stories table below)
 
 ## Scope
 
@@ -76,6 +76,35 @@ This epic is complete when:
 - All Logic stories have passing Edit Mode test files in `tests/`; acceptance criteria from
   the four source GDDs are verified.
 
+## Stories
+
+| # | Story | Type | TRs | Status | ADR |
+|---|-------|------|-----|--------|-----|
+| 001 | RNG primitives & seed derivation (Mix32 / SplitMix32 / F1–F3) | Logic | TR-rng-002 | Ready | ADR-004 |
+| 002 | RNG draw API — NextFloat / NextInt / NextColor / Shuffle (F4–F6) | Logic | TR-rng-003 | Ready | ADR-004 |
+| 003 | RNG stream isolation, ForkStream & bug-repro session log | Logic | TR-rng-001, TR-rng-003 | Ready | ADR-004 |
+| 004 | RNG golden-vector fixture & byte-for-byte regression suite | Logic | TR-rng-002 | Ready | ADR-004 |
+| 005 | LevelData Domain POCO — schema v1, defaults, closed enums, additive display_name | Logic | TR-ldf-001, TR-ldf-004 | Ready | arch §6 |
+| 006 | LevelData.Validate() — V1–V19 scalar & structural rules | Logic | TR-ldf-003 | Ready | arch §6 |
+| 007 | LevelData V8 connectivity flood-fill (single 4-connected board) | Logic | TR-ldf-003 | Ready | arch §6 |
+| 008 | Save canonical JSON writer + FNV-1a-32 checksum + SerializeForDisk | Logic | TR-sp-001 | Ready | ADR-003 |
+| 009 | SaveJsonReader + POCOs + round-trip & unknown-field tolerance | Logic | TR-sp-001 | Ready | ADR-003 |
+| 010 | Single-slot Decode — S1–S8 + detect-and-accept tamper classification | Logic | TR-sp-001 | Ready | ADR-003 |
+| 011 | Monotonic merge + self-healing total_stars + migration + A/B slot-selection | Logic | TR-sp-003 | Ready | ADR-003 |
+| 012 | LevelManifest Domain POCO — ResolveOrdinal, tombstones, WorldMapManifest POCO | Logic | TR-rng-004, TR-wm-002 | Ready | ADR-006 (+ADR-004) |
+| 013 | ManifestCrossValidator — bijection + W6 + W7 + W8 (pure, shared) | Logic | TR-wm-002, TR-ldf-003 | Ready | ADR-006 |
+| 014 | LevelManifestGenerator editor tool — append-only, tombstone, prefix-guard, CI verify | Integration | TR-wm-002 | Ready | ADR-006 |
+
+**TR coverage:** all 10 owned TRs allocated — TR-rng-001 (003), TR-rng-002 (001, 004), TR-rng-003 (002, 003), TR-rng-004 (012), TR-ldf-001 (005), TR-ldf-003 (006, 007, 013/W8), TR-ldf-004 (005), TR-sp-001 (008, 009, 010), TR-sp-003 (011), TR-wm-002 (012, 013, 014).
+
+**Story tracks & critical path:**
+- **RNG (ADR-004):** 001 → 002 → 003 → 004. Story 004 (golden vectors) is the standing determinism gate that unblocks E03.
+- **Level Data schema (arch §6):** 005 → 006 → 007.
+- **Save codec (ADR-003):** 008 → 009 → 010; 011 depends on 009/010. (Codec/single-slot subset only — the two-slot ResolveLoad ladder + file IO = TR-sp-002 in E06.)
+- **Manifest tool (ADR-006):** 012 → 013 → 014. 014 is the ONE non-pure story (SweetCascade.Editor; `AssetDatabase`/`IPreprocessBuildWithReport`); it also depends on E01 Story 006.
+
+**All 14 stories depend on E01** (asmdefs + Domain-purity guard + game-ci gate must exist before Domain code is buildable/provable) — specifically E01 Story 002 (asmdefs), Story 003 (L2 denylist scan), Story 004 (game-ci gate), Story 005 (test conventions), and Story 006 (Editor/ManifestGen layout, for Story 014). No governing ADR is Proposed — ADR-003/004/006 are Accepted and present; the LevelData POCO/Validate() home is master-architecture §6. Zero stories are blocked.
+
 ## Next Step
 
-Run `/create-stories domain-foundation`.
+Run `/story-readiness production/epics/domain-foundation/story-001-rng-primitives-seed-derivation.md`, then `/dev-story` to begin. Work stories in dependency order (each story's `Depends on:` field lists its prerequisites). The four tracks (RNG / Level Data / Save / Manifest) are largely independent after E01 lands and can proceed in parallel; RNG Story 004's golden-vector gate and Manifest Story 014's CI verify are the two blocking gates E03/E10 wait on.

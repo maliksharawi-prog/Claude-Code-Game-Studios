@@ -5,7 +5,7 @@
 > **GDD**: `design/gdd/save-persistence.md` (IO/API) · `design/gdd/level-data-format.md` (SO wrapper + loading)
 > **Architecture Module**: `SweetCascade.Game` — BootLoader (cold-start sequence, Addressables init), Addressables loader (throw-wrapped `IContentLoader`), LevelDataAsset ScriptableObject (`ToDomain()`), SaveService (two on-disk slot files, atomic A/B write ladder, dirty flag, lifecycle flush)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories app-shell-persistence-loading`
+> **Stories**: 5 stories created (2026-07-18) — see [## Stories](#stories)
 
 ## Scope
 
@@ -58,6 +58,18 @@ consumes.
   for startup-immediate assets"); A3 scoped to non-retired entries (CONFLICT-2). The BootLoader
   manifest-load slice is **unblocked** — a single load mechanism is now specified.
 - `OnApplicationPause(bool)` / `OnApplicationFocus(bool)` drive `FlushIfDirty` (arch §2 residue map).
+
+## Stories
+
+| # | Story | Type | Status | ADR | TRs |
+|---|-------|------|--------|-----|-----|
+| 001 | IContentLoader TryLoad choke point (Addressables wrap) | Integration | Ready | ADR-002 | ldf-002 (loading) |
+| 002 | LevelDataAsset ScriptableObject + ToDomain() | Integration | Ready | ADR-002 (+ADR-006) | ldf-002 (SO/mapping) |
+| 003 | SaveService atomic A/B durable write (ISaveStore) | Integration | Ready | ADR-003 | sp-002 |
+| 004 | SaveService API surface & lifecycle triggers | Integration | Ready | ADR-003 (+ADR-005 D4) | sp-004 |
+| 005 | BootLoader cold-start sequence + FATAL boot-error + recovery notice | Integration | Ready | ADR-002 + ADR-003 + ADR-006 | ldf-002, sp-004 (boot) |
+
+*Manifest Version embedded in every story: 2026-07-18. TR coverage: ldf-002, sp-002, sp-004 — all 3 owned TRs allocated. Work stories in ascending order; each story's `Depends on:` field lists prerequisites (intra-epic + E01, E02, E05).*
 
 ## Definition of Done
 

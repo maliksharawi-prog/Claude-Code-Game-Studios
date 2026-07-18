@@ -21,11 +21,11 @@ both owned by **E09**, pending the deliberately-deferred ADR-G / ADR-H.
 | Epic | Layer | System(s) | Primary GDD(s) | TRs Owned | Depends On | Stories | Status |
 |------|-------|-----------|----------------|-----------|------------|---------|--------|
 | E01 project-scaffold-ci | Foundation (infra) | Unity project / assemblies / CI | technical-preferences.md · arch §5 | 1 (perf-002) | — | 6 stories | Ready |
-| E02 domain-foundation | Foundation | RNG · Level Data schema · Save codec · Manifest tool | rng-service · level-data-format · save-persistence · world-map | 10 | E01 | Not yet created | Ready |
+| E02 domain-foundation | Foundation | RNG · Level Data schema · Save codec · Manifest tool | rng-service · level-data-format · save-persistence · world-map | 10 | E01 | 14 stories | Ready |
 | E03 board-engine-specials | Core / Feature | Match-3 Board Engine · Special Candies | board-engine · special-candies | 8 | E01, E02 | Not yet created | Ready |
 | E04 scoring-objectives | Feature | Scoring & Stars · Level Objective & Move-Limit | scoring-stars · level-objectives | 7 | E01, E02, E03 | Not yet created | Ready |
-| E05 game-runtime-input-screenflow | Core / Presentation | Touch & Input · Reveal replay · Screen Flow | touch-input · juice-layer · screen-flow | 8 | E01, E02, E03, E04 | Not yet created | Ready |
-| E06 app-shell-persistence-loading | Foundation | BootLoader · Addressables loader · Save IO · LevelData SO | save-persistence · level-data-format | 3 | E01, E02, E05 | Not yet created | Ready |
+| E05 game-runtime-input-screenflow | Core / Presentation | Touch & Input · Reveal replay · Screen Flow | touch-input · juice-layer · screen-flow | 8 | E01, E02, E03, E04 | 9 stories | Ready |
+| E06 app-shell-persistence-loading | Foundation | BootLoader · Addressables loader · Save IO · LevelData SO | save-persistence · level-data-format | 3 | E01, E02, E05 | 5 stories | Ready |
 | E07 ui-toolkit-screens-hud | Presentation | Game UI / Screens · World Map view | screen-flow · world-map | 2 | E01, E04, E05, E06 | Not yet created | Ready |
 | E08 rendering-materials | Presentation | BoardPresenter · glass-candy material set | visual-interface-blueprint · technical-preferences.md | 1 (perf-001) | E01, E05 | Not yet created | Ready |
 | E09 juice-vfx-audio-haptics | Presentation | Juice Layer (VFX / Audio / Haptics) | juice-layer | 2 (⚠️ both Partial) | E01, E03, E05, E08 | Not yet created | Ready (2 TRs ADR-blocked) |

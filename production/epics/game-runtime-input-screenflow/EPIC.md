@@ -5,7 +5,7 @@
 > **GDD**: `design/gdd/touch-input.md` · `design/gdd/juice-layer.md` (replay mechanism) · `design/gdd/screen-flow.md`
 > **Architecture Module**: `SweetCascade.Game` — InputRouter (gesture→intent), EventBridge (per-move buffer), JuiceDirector replay core (Shadow Board Model + Reveal Queue + `juice_input_lock`), BoardPresenter (pooled grey-box piece animation), ScreenFlowController (2-layer state machine + T1–T21 + InputGate Formula 5)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories game-runtime-input-screenflow`
+> **Stories**: 9 stories created (2026-07-18) — see [## Stories](#stories)
 
 ## Scope
 
@@ -64,6 +64,22 @@ transition that waits on `juice_input_lock` with a safety ceiling (retry skips t
 - **Contract integrity:** the InputGate composes four independently-owned booleans
   (base_state · `board_input_enabled` · `¬overlay_is_active` · `¬juice_input_lock`) — no owner
   reads another's internals; each contributes one veto term (arch §7.2).
+
+## Stories
+
+| # | Story | Type | Status | ADR | TRs |
+|---|-------|------|--------|-----|-----|
+| 001 | InputRouter gesture → intent state machine | Logic | Ready | N/A (arch §6) | ti-001 |
+| 002 | InputGate four-term composition (Formula 5) | Logic | Ready | ADR-005 (D5) | sf-002 |
+| 003 | Unified pointer surface + gate-gated routing | Integration | Ready | ADR-005 (D5) / arch §6 | ti-002, ti-003 |
+| 004 | EventBridge hand-off + Shadow Board Model | Logic | Ready | ADR-005 (D1/D3) | jl-001 |
+| 005 | Reveal Queue & replay scheduler ordering | Logic | Ready | ADR-005 (D1/D3) | jl-001 |
+| 006 | juice_input_lock + gravity re-derivation + reshuffle live-query | Logic | Ready | ADR-005 (D5) | jl-002 |
+| 007 | BoardPresenter grey-box replay (swap → paced motion → input unlock) | Integration | Ready | ADR-005 (D1/D3/D5) | jl-001, jl-002, ti-003 |
+| 008 | ScreenFlowController 2-layer state machine (T1–T21) | Logic | Ready | arch §6 / ADR-005 (D5) | sf-001, sf-002 |
+| 009 | Results waits on juice_input_lock + retry skips Pre-Level Card | Integration | Ready | ADR-005 (D3) / arch §7.3 | sf-003 |
+
+*Manifest Version embedded in every story: 2026-07-18. TR coverage: ti-001/002/003, jl-001/002, sf-001/002/003 — all 8 owned TRs allocated. Work stories in ascending order; each story's `Depends on:` field lists prerequisites (intra-epic + E01–E04).*
 
 ## Definition of Done
 
