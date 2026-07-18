@@ -1,0 +1,50 @@
+name: Automated Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run GdUnit4 Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Guard: Check if project.godot exists before attempting to run tests.
+      # Early versions of the project won't have the Godot project file yet.
+      # This step prevents CI from failing on a missing project, which is expected
+      # during the pre-implementation phase.
+      - name: Check for Godot Project File
+        id: project_check
+        run: |
+          if [ -f "project.godot" ]; then
+            echo "project_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "project_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ WARNING: project.godot not found. Skipping tests until Godot project scaffold is in place."
+          fi
+
+      # Only run tests if project.godot exists.
+      - name: Run GdUnit4 Tests
+        if: steps.project_check.outputs.project_exists == 'true'
+        uses: MikeSchulze/gdUnit4-action@v1
+        with:
+          godot-version: '4.6'
+          paths: |
+            tests/unit
+            tests/integration
+          report-name: test-results
+
+      - name: Upload Test Results
+        if: always() && steps.project_check.outputs.project_exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: reports/
