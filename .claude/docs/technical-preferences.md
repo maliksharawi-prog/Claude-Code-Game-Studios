@@ -2,74 +2,84 @@
 
 <!-- Populated by /setup-engine. Updated as the user makes decisions throughout development. -->
 <!-- All agents reference this file for project-specific standards and conventions. -->
+<!-- Engine re-pinned 2026-07-18 per ADR-001 (Godot 4.6 → Unity 6.3 LTS, founder decision). -->
 
 ## Engine & Language
 
-- **Engine**: Godot 4.6 (pinned — see `docs/engine-reference/godot/VERSION.md`)
-- **Language**: GDScript
-- **Rendering**: 2D, Mobile renderer (Vulkan; GL Compatibility fallback for Web export)
-- **Physics**: None required for core gameplay (board logic is grid-based, not physics-driven); engine default (Jolt) untouched
+- **Engine**: Unity 6.3 LTS (6000.3.x) — pinned via ADR-001; see `docs/engine-reference/unity/VERSION.md`
+- **Language**: C#
+- **Rendering**: URP (mobile), Render Graph path ONLY (Compatibility Mode removed in 6.3); 3D "glass candy" target per `docs/architecture/visual-interface-blueprint.md`; bloom restricted to emissives
+- **UI**: UI Toolkit for screens/HUD (validate USS against 6.3's stricter parser); world-space FX outside UI Toolkit
+- **Physics**: None for core gameplay (board logic is grid-based, headless C# domain model — no physics dependency)
 
 ## Input & Platform
 
-- **Target Platforms**: Mobile (iOS / Android) primary, Web (browser) secondary
-- **Input Methods**: Touch, Mouse (web/desktop testing)
-- **Primary Input**: Touch (tap-to-select and swipe-to-swap)
+- **Target Platforms**: Mobile (iOS / Android) primary, Web (secondary — served by the HTML playable slice; Unity WebGL optional later)
+- **Input Methods**: Touch, Mouse (editor/desktop testing) — Unity Input System package (legacy Input Manager deprecated)
+- **Primary Input**: Touch (tap-to-select and swipe-to-swap per `design/gdd/touch-input.md`)
 - **Gamepad Support**: None
 - **Touch Support**: Full
-- **Platform Notes**: Portrait orientation, one-handed play. All interactive elements ≥ 44px touch targets. No hover-only interactions. Web build must work with mouse using the same tap/swipe model.
+- **Platform Notes**: Portrait orientation, one-handed play. All interactive elements ≥ 44px touch targets (44px floor proven in `board-engine.md` Formula 4). No hover-only interactions; hover is additive on desktop only.
 
-## Naming Conventions
+## Naming Conventions (C#)
 
-- **Classes**: PascalCase (e.g., `BoardController`)
-- **Variables**: snake_case (e.g., `move_count`); functions snake_case (e.g., `resolve_matches()`)
-- **Signals/Events**: snake_case past tense (e.g., `match_cleared`, `cascade_ended`)
-- **Files**: snake_case matching class (e.g., `board_controller.gd`)
-- **Scenes/Prefabs**: PascalCase matching root node (e.g., `BoardController.tscn`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `BOARD_WIDTH`)
+- **Classes**: PascalCase (e.g., `BoardModel`)
+- **Public fields/properties**: PascalCase (e.g., `MoveCount`)
+- **Private fields**: _camelCase (e.g., `_moveCount`)
+- **Methods**: PascalCase (e.g., `ResolveMatches()`)
+- **Events**: PascalCase past tense (e.g., `MatchCleared`, `CascadeEnded`) — mirrors the GDD signal catalog
+- **Files**: PascalCase matching class (e.g., `BoardModel.cs`)
+- **Prefabs/Scenes**: PascalCase (e.g., `FruitPiece.prefab`, `Gameplay.unity`)
+- **Constants**: PascalCase or UPPER_SNAKE_CASE for GDD-registry constants (e.g., `MAX_CASCADE_DEPTH`)
 
 ## Performance Budgets
 
 - **Target Framerate**: 60 fps on mid-range mobile (e.g., 2022-era Android)
 - **Frame Budget**: 16.6 ms
-- **Draw Calls**: ≤ 100 during heaviest cascade (batch candy sprites via atlas)
+- **Draw Calls**: ≤ 100 during heaviest cascade — 5 shared fruit meshes with per-instance hue (GPU instancing / SRP Batcher), cell wells via one instanced draw, pooled FX
+- **Shadows**: NO realtime shadows on mobile — blob-shadow decals per the visual blueprint; one key directional light
 - **Memory Ceiling**: ≤ 400 MB on mobile
 
 ## Testing
 
-- **Framework**: gdUnit4 (runner: `godot --headless --script tests/gdunit4_runner.gd`)
+- **Framework**: Unity Test Framework — Edit Mode for the headless C# domain layer (BoardModel/SpecialResolver/ScoreKeeper), Play Mode for integration
+- **CI Runner**: `game-ci/unity-test-runner@v4` (GitHub Actions), blocking gate on PRs and pushes to main
 - **Minimum Coverage**: All board-logic and scoring formulas unit-tested (match detection, cascade resolution, special-candy creation rules, star thresholds)
 - **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
-- **Determinism rule**: All board RNG must be seedable so match/cascade tests are reproducible
+- **Determinism rule**: All board RNG must be seedable (stream-based per `design/gdd/rng-service.md`) so match/cascade tests are reproducible
 
 ## Forbidden Patterns
 
-- [None configured yet — add as architectural decisions are made]
+- URP Compatibility Mode (removed in 6.3 — Render Graph only)
+- Legacy Input Manager (deprecated — Input System package only)
+- Bitwise-combined `AccessibilityRole` values (standard enum since 6.3)
+- Engine types (`UnityEngine.*`) inside the domain-logic assembly — the board/scoring/objectives layer stays pure C# and headless-testable (board-engine.md logic/presentation boundary)
 
 ## Allowed Libraries / Addons
 
-- [None configured yet — add as dependencies are approved]
+- Unity Input System, UI Toolkit, Addressables, Unity Test Framework (core kit)
+- [Add others only when actively integrated — no speculative dependencies]
 
 ## Architecture Decisions Log
 
-- [No ADRs yet — use /architecture-decision to create one]
+- ADR-001: Engine Selection — Unity 6.3 LTS (Accepted, 2026-07-18)
 
 ## Engine Specialists
 
-- **Primary**: godot-specialist
-- **Language/Code Specialist**: godot-gdscript-specialist (all .gd files)
-- **Shader Specialist**: godot-shader-specialist (.gdshader files, VisualShader resources)
-- **UI Specialist**: godot-specialist (no dedicated UI specialist — primary covers all UI)
-- **Additional Specialists**: godot-gdextension-specialist (GDExtension / native C++ bindings only)
-- **Routing Notes**: Invoke primary for architecture decisions, ADR validation, and cross-cutting code review. Invoke GDScript specialist for code quality, signal architecture, static typing enforcement, and GDScript idioms. Invoke shader specialist for material design and shader code. Invoke GDExtension specialist only when native extensions are involved.
+- **Primary**: unity-specialist
+- **Language/Code Specialist**: unity-specialist (C# review — primary covers it)
+- **Shader Specialist**: unity-shader-specialist (Shader Graph, HLSL, URP materials — owns the glass-candy material set)
+- **UI Specialist**: unity-ui-specialist (UI Toolkit UXML/USS, runtime UI)
+- **Additional Specialists**: unity-dots-specialist (ECS/Jobs/Burst — not currently used), unity-addressables-specialist (asset loading, memory management)
+- **Routing Notes**: Invoke primary for architecture and general C# review. Invoke shader specialist for the CandyGlass/GildedCream/BombOrb material set and rendering. Invoke UI specialist for all interface implementation. Invoke Addressables specialist for asset management. DOTS specialist only if a profiled need emerges (unlikely at this scope).
 
 ### File Extension Routing
 
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (.gd files) | godot-gdscript-specialist |
-| Shader / material files (.gdshader, VisualShader) | godot-shader-specialist |
-| UI / screen files (Control nodes, CanvasLayer) | godot-specialist |
-| Scene / prefab / level files (.tscn, .tres) | godot-specialist |
-| Native extension / plugin files (.gdextension, C++) | godot-gdextension-specialist |
-| General architecture review | godot-specialist |
+| Game code (.cs files) | unity-specialist |
+| Shader / material files (.shader, .shadergraph, .mat) | unity-shader-specialist |
+| UI / screen files (.uxml, .uss, UI documents) | unity-ui-specialist |
+| Scene / prefab files (.unity, .prefab) | unity-specialist |
+| Native plugins | unity-specialist |
+| General architecture review | unity-specialist |

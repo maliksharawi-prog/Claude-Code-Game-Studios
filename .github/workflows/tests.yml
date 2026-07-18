@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Run GdUnit4 Tests
+    name: Run Unity Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -17,34 +17,42 @@ jobs:
         with:
           lfs: true
 
-      # Guard: Check if project.godot exists before attempting to run tests.
-      # Early versions of the project won't have the Godot project file yet.
-      # This step prevents CI from failing on a missing project, which is expected
-      # during the pre-implementation phase.
-      - name: Check for Godot Project File
+      # Guard: the Unity project is created during the Technical Setup phase.
+      # Until a ProjectSettings/ProjectVersion.txt exists (expected under
+      # src/SweetCascade/), skip the test run with a notice instead of failing.
+      # Engine pin: Unity 6.3 LTS per ADR-001.
+      - name: Check for Unity project
         id: project_check
+        shell: bash
         run: |
-          if [ -f "project.godot" ]; then
-            echo "project_exists=true" >> $GITHUB_OUTPUT
+          shopt -s globstar nullglob
+          hits=(**/ProjectSettings/ProjectVersion.txt)
+          if [ ${#hits[@]} -gt 0 ]; then
+            echo "project_exists=true" >> "$GITHUB_OUTPUT"
+            echo "project_path=$(dirname "$(dirname "${hits[0]}")")" >> "$GITHUB_OUTPUT"
           else
-            echo "project_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ WARNING: project.godot not found. Skipping tests until Godot project scaffold is in place."
+            echo "project_exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Unity project not found yet — skipping tests until the project scaffold lands (see tests/README.md)."
           fi
 
-      # Only run tests if project.godot exists.
-      - name: Run GdUnit4 Tests
+      # Requires repository secrets UNITY_LICENSE (or UNITY_EMAIL/UNITY_PASSWORD
+      # for personal license activation) before the first real run — see
+      # tests/README.md.
+      - name: Run Unity Test Framework (Edit + Play mode)
         if: steps.project_check.outputs.project_exists == 'true'
-        uses: MikeSchulze/gdUnit4-action@v1
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          godot-version: '4.6'
-          paths: |
-            tests/unit
-            tests/integration
-          report-name: test-results
+          projectPath: ${{ steps.project_check.outputs.project_path }}
+          testMode: all
+          artifactsPath: test-results
 
       - name: Upload Test Results
         if: always() && steps.project_check.outputs.project_exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: reports/
+          path: test-results/

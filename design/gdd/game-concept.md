@@ -1,7 +1,7 @@
 # Game Concept: Sweet Cascade
 
 *Created: 2026-07-17*
-*Status: Approved — core loop validated by concept prototype (**PROCEED**, 2026-07-17); booster-brewing hook approved by founder (2026-07-17). Engine: Godot 4.6 stands unless console/native-SDK needs force a revisit.*
+*Status: Approved — core loop validated by concept prototype (**PROCEED**, 2026-07-17); booster-brewing hook approved by founder (2026-07-17). Engine: **Unity 6.3 LTS** per founder decision 2026-07-18 (ADR-001; supersedes the initial Godot 4.6 pin).*
 
 ---
 
@@ -221,7 +221,7 @@ tactile satisfaction of bubble wrap and popping toys (feedback design).
 
 | Consideration | Assessment |
 | ---- | ---- |
-| **Recommended Engine** | Godot 4.6 + GDScript — best-in-class 2D, free (MIT), exports cleanly to Android/iOS/Web, fastest iteration for a solo-plus-agents team. (Unity is the conventional mobile pick; Godot chosen for cost, openness, and 2D strength — revisit if console or heavy native SDK integrations become priorities.) |
+| **Recommended Engine** | **Unity 6.3 LTS + C#** (founder decision 2026-07-18, ADR-001): strongest mobile store-publishing pipeline, Unity-first live-ops SDK ecosystem (IAP/ads/attribution/analytics), production-proven URP mobile 3D for the glass-candy art target. *(Initial pin was Godot 4.6 for cost/openness/2D strength — superseded when publishing ease, 3D direction, and live-ops ambitions tipped the tradeoff; see ADR-001 for rollback path.)* |
 | **Key Technical Challenges** | Deterministic, testable match/cascade resolution; board-state serialization for challenge sharing; live-ops content pipeline (events as data, not builds); leaderboard backend |
 | **Art Style** | 2D stylized, glossy "candy shop" look — saturated palette, rounded shapes, heavy juice (squash/stretch, particles) |
 | **Art Pipeline Complexity** | Medium — custom 2D sprites + particle VFX; AI-assisted asset generation via studio pipeline |

@@ -2,11 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Unity 6.3 LTS |
+| **Engine Version** | Unity 6.3 LTS (6000.3.x) |
 | **Release Date** | December 2025 |
-| **Project Pinned** | 2026-02-13 |
-| **Last Docs Verified** | 2026-02-13 |
-| **LLM Knowledge Cutoff** | May 2025 |
+| **Support Window** | LTS through December 2027 |
+| **Project Pinned** | 2026-07-18 — ADR-001 (`docs/architecture/adr-001-engine-selection-unity.md`) |
+| **Last Docs Verified** | 2026-07-18 |
+| **LLM Knowledge Cutoff** | January 2026 (training reliably covers ~6.0/6.1) |
 
 ## Knowledge Gap Warning
 
@@ -46,6 +47,27 @@ before suggesting Unity API calls.
 - **Legacy Particle System**: Use Visual Effect Graph
 - **UGUI**: Still supported, but UI Toolkit recommended for new projects
 - **Old ECS (GameObjectEntity)**: Replaced by modern DOTS/Entities
+
+## Unity 6.3-Specific Changes (verified 2026-07-18, official docs)
+
+- **URP Render Graph is mandatory**: `RenderGraphSettings.enableRenderCompatibilityMode`
+  is now read-only (`false`). Never author against Compatibility Mode — convert
+  or stay ≤6.2 (unsupported). Project rule: Render Graph path from day one.
+- **AccessibilityRole** converted from flags enum to standard enum — no bitwise
+  combining; single roles only (affects screen-reader support work).
+- **UI Toolkit USS parser stricter** — previously-tolerated invalid USS now
+  raises validation errors; lint USS during UI implementation.
+- **URP/HDRP unified shader compiler/API**; new URP Bloom filtering options
+  (Kawase / Dual) — relevant to the glass-candy bloom pass (emissives only).
+- HTTP/2 + gRPC support (relevant to Phase 3 backend); VFX Graph GPU-event
+  instancing (relevant to cascade FX at scale).
+
+## Project History
+
+- 2026-07-12 → 2026-07-18: project was pinned to **Godot 4.6**
+  (`docs/engine-reference/godot/VERSION.md`, retained for history).
+  Superseded by ADR-001: founder decision (publishing path), 3D glass-candy
+  art target, live-ops SDK ecosystem.
 
 ## Verified Sources
 
