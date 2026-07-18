@@ -1,6 +1,7 @@
 # Save & Persistence
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see
+`design/gdd/reviews/save-persistence-review-log.md`*
 *Layer: Foundation · Priority: MVP · Phase: MVP · Category: Persistence*
 *Author: systems-designer · Created: 2026-07-18 · Last Updated: 2026-07-18*
 *Implements Pillar: supports Pillar 2 — Clever, Never Cheated (indirectly: the
@@ -8,9 +9,11 @@ game never silently alters or discards a player's legitimately-earned record)*
 *Depends On: — (none — Foundation layer, no prerequisite GDDs; reads Level
 Data Format's `level_id` key format as an opaque String, not a build
 dependency)*
-*Depended On By: Game UI/Screens Flow, Level Progression/World Map (MVP,
-active); Booster Brewing Meta (Phase 2, forward dependency); Events/Theming
-Engine, Social Layer (Phase 3, forward dependencies)*
+*Depended On By: Game UI/Screens Flow, Level Progression/World Map, Level
+Objective & Move-Limit System (MVP, active — see §Dependencies for a caller-
+confirmation gap on the last); Booster Brewing Meta (Phase 2, forward
+dependency); Events/Theming Engine, Social Layer (Phase 3, forward
+dependencies)*
 *Source: `design/gdd/game-concept.md` · `design/gdd/systems-index.md` ·
 `design/gdd/level-data-format.md` · `design/gdd/rng-service.md`*
 
@@ -724,9 +727,9 @@ its own Dependencies section when authored.
 | System | Direction | Nature of Dependency |
 |--------|-----------|----------------------|
 | Level Data Format (`level-data-format.md`, APPROVED) | This reads its key format (data only, not a build dependency) | `level_records` is keyed by `level_id`, using Level Data Format's stable String identifier (`<region_code>-<3-digit-sequence>`) — never `display_number`, per that document's own explicit design intent (§2 there). |
-| Game UI/Screens Flow (`screen-flow.md`, not yet authored) | Screen Flow depends on this | Expected to call `load_profile()` at boot, `get_profile()`/`get_total_stars()` for menu/profile-header display, `update_setting()` from settings screens, and to surface `profile_recovery_notice_needed` (§6) as a player-facing message. **Reciprocal note**: its Dependencies section must list this document and the operations it calls. |
-| Level Progression / World Map (`world-map.md`, not yet authored) | World Map depends on this | Expected to read `level_records`/`total_stars` (via `get_profile()`/`get_total_stars()`) to drive star-gated region/level unlocks. **Reciprocal note** required at authoring. |
-| Level Objective & Move-Limit System (`level-objectives.md`, not yet authored) | Objective System depends on this | Expected to be the system (via Scoring & Star Thresholds' star computation) that triggers `record_level_completion()` on a win. **Reciprocal note** required at authoring. |
+| Game UI/Screens Flow (`screen-flow.md`, Draft) | Screen Flow depends on this | Calls `load_profile()` at boot, `get_profile()`/`get_total_stars()` for menu/profile-header display, `update_setting()` from settings screens, and surfaces `profile_recovery_notice_needed` (§6) as a player-facing message. **Reciprocal note fulfilled** — `screen-flow.md`'s own Dependencies section lists this document and confirms every operation it calls. |
+| Level Progression / World Map (`world-map.md`, Draft) | World Map depends on this | Reads `level_records`/`total_stars` (via `get_profile()`/`get_total_stars()`) to drive star-gated region/level unlocks. **Reciprocal note fulfilled** — `world-map.md`'s own Dependencies section lists this document and confirms it performs zero writes. |
+| Level Objective & Move-Limit System (`level-objectives.md`, Draft) | Objective System depends on this | Expected to be the system (via Scoring & Star Thresholds' star computation) that triggers `record_level_completion()` on a win. **Reciprocal note NOT YET fulfilled** — as of this review, `level-objectives.md`'s own Dependencies section does not list Save & Persistence at all, and its § Detailed Rules 9 resolution flow (build `ObjectivesResolution` → call Scoring's `finalize_results()` → emit `level_resolved`) never mentions calling `record_level_completion()`. `screen-flow.md` §5 independently asserts the same unconfirmed claim ("Level Objective/Scoring calls `record_level_completion()`"). This is a genuine, unresolved caller gap in the win→save pipeline — flagged as advisory here (this document's own contract is unaffected and correct regardless of who calls it) but should be treated as a priority item at `level-objectives.md`'s or `scoring-stars.md`'s next review pass, since as currently authored, no document actually calls this API on a win. See Open Questions. |
 | Booster Brewing Meta (`booster-brewing.md`, Phase 2, gated) | Booster Brewing depends on this | Anticipated additive `brewing_inventory` schema extension (Detailed Rules §8/§12). |
 | Events/Theming Engine (`events-theming.md`, Phase 3) | Events depends on this | Anticipated additive `event_progress` schema extension. |
 | Social Layer (`social-layer.md`, Phase 3) | Social Layer depends on this | Anticipated additive account-link/social metadata; also the consumer that will force a re-examination of the tamper-accept policy (§7) once leaderboard integrity matters. |
@@ -862,5 +865,6 @@ mocking the write call to stop partway through.
 | Should the integrity policy (§7, currently `detect_and_accept`) flip to `reject` — or move to server-side verification for leaderboard-visible fields specifically — once Social Layer ships? | security-engineer | Before `social-layer.md` (Phase 3) authoring | — |
 | Does compact JSON remain the right save-file encoding once profile size grows substantially in Phase 2/3 (brewing inventory, event progress), or should a binary format be reconsidered for parse-time/size at that larger scale? | technical-director | Phase 2 gate, post-`booster-brewing.md` | — |
 | Should `SLOT_COUNT` increase beyond 2 (A/B) if real corruption incidents are observed in production telemetry post-launch? | technical-director | Post-launch, data-driven | — |
-| Should orphaned `level_records` entries (a `level_id` removed from a later content update, Edge Cases) ever be actively pruned, and if so by this system or by World Map at content-update time? | game-designer | At `world-map.md` (#11) authoring | — |
+| Should orphaned `level_records` entries (a `level_id` removed from a later content update, Edge Cases) ever be actively pruned, and if so by this system or by World Map at content-update time? | game-designer | At `world-map.md` (#11) authoring | **Resolved** — `world-map.md` § Detailed Rules 8 confirms: never pruned, matching this document's existing precedent exactly. |
 | Should Godot's exact `user://` write primitive (FileAccess flush/sync behavior across iOS/Android/Web export targets in 4.6) be confirmed to actually guarantee "either the write fully lands or the file stays exactly as it was," or does it need an explicit fsync-equivalent call to hold that guarantee? | technical-director / godot-specialist | Before implementation begins | — |
+| Which system actually calls `record_level_completion()` on a win? This document, `screen-flow.md`, and `world-map.md` all assert "Level Objective & Move-Limit System" as the expected caller, but `level-objectives.md` as currently authored neither lists Save & Persistence as a dependency nor describes this call anywhere in its win-resolution flow (§ Detailed Rules 9). Left unresolved, no system in the current design actually persists a win. | systems-designer | Before `level-objectives.md`'s or `scoring-stars.md`'s next review pass — this is a priority item, not a routine forward-dependency note | — |
