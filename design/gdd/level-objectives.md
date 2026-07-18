@@ -1,6 +1,6 @@
 # Level Objective & Move-Limit System
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — NEEDS REVISION (lean review, 2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Gameplay*

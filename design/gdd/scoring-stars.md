@@ -1,6 +1,6 @@
 # Scoring & Star Thresholds
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — NEEDS REVISION (lean review, 2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Progression*
@@ -587,10 +587,10 @@ values ever exist); not a continuous runtime function.
 ```
 K=3: p_continue = 1-(1-1/9)³  = 1-(8/9)³   = 0.29767  → q=0.70233 → q²=0.49327 → M=2.02729
 K=4: p_continue = 1-(1-1/16)³ = 1-(15/16)³ = 0.17603  → q=0.82398 → q²=0.67894 → M=1.47295
-K=5: p_continue = 1-(1-1/25)³ = 1-(24/25)³ = 0.11526  → q=0.88474 → q²=0.78296 → M=1.27720   (anchor)
+K=5: p_continue = 1-(1-1/25)³ = 1-(24/25)³ = 0.11526  → q=0.88474 → q²=0.78276 → M=1.27753   (anchor)
 
-M(3)/M(5) = 1.58733  →  REFERENCE_SCORE_PER_MOVE(3) = 160 × 1.58733 ≈ 254.0 → rounds to 255
-M(4)/M(5) = 1.15325  →  REFERENCE_SCORE_PER_MOVE(4) = 160 × 1.15325 ≈ 184.5 → rounds to 185
+M(3)/M(5) = 1.58688  →  REFERENCE_SCORE_PER_MOVE(3) = 160 × 1.58688 ≈ 253.9 → rounds to 255
+M(4)/M(5) = 1.15292  →  REFERENCE_SCORE_PER_MOVE(4) = 160 × 1.15292 ≈ 184.5 → rounds to 185
 M(5)/M(5) = 1.00000  →  REFERENCE_SCORE_PER_MOVE(5) = 160 × 1.00000 = 160.0   (anchor, unrounded)
 ```
 
