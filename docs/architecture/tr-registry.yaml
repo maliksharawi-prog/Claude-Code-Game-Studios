@@ -149,6 +149,14 @@ requirements:
     created: 2026-07-18
     revised: ""
     status: active
+  - id: TR-be-006
+    system: board-engine
+    gdd: design/gdd/board-engine.md
+    requirement: "Formula 4: 44px touch-target floor proven across the 3-9 grid range on the smallest supported viewport (cross-cutting proof closed on behalf of touch-input.md / design/ux/accessibility-requirements.md)"
+    coverage: "board-engine Formula 4 / E03 story-011 Edit Mode test"
+    created: 2026-07-18
+    revised: ""
+    status: active
 
   # ── Special Candies & Combo Matrix (design/gdd/special-candies.md) ───────
   - id: TR-sc-001

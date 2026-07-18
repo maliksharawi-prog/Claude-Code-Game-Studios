@@ -5,7 +5,21 @@
 > **GDD**: `design/gdd/scoring-stars.md` (Rev 2) · `design/gdd/level-objectives.md` (Rev 2)
 > **Architecture Module**: `SweetCascade.Domain` — ScoreKeeper (`long` accumulator, activation bonus, chain multiplier, star thresholds, pull API) and ObjectiveEvaluator (tracker registry, move counter, win/lose predicate, `ResultsData` assembly, persistence handshake)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories scoring-objectives`
+> **Stories**: 7 stories created — see the Stories table below.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | ScoreKeeper — `step_score`, unified activation bonus & linear chain multiplier | Logic | Ready | ADR-005 |
+| 002 | ScoreKeeper — reference-score table, star thresholds, closest-miss & integer safety | Logic | Ready | arch §8.3 |
+| 003 | ScoreKeeper pull API — `get_current_score()` & `get_score_results() → ScoreResults` | Integration | Ready | arch §8.3 |
+| 004 | ObjectiveEvaluator — tracker registry, field normalization & handler map | Logic | Ready | arch §6 |
+| 005 | ObjectiveEvaluator — unified `collect_color` counting, `score_target` seam & move accounting | Logic | Ready | ADR-005 |
+| 006 | ObjectiveEvaluator — win/lose at `board_stabilized` (last-move-cascade win) | Logic | Ready | ADR-005 |
+| 007 | ObjectiveEvaluator — `ResultsData` assembly & persist-before-`LevelResolved` | Integration | Ready | ADR-005 |
+
+> **TR coverage**: TR-ss-001 (S001), TR-ss-002 (S001/002), TR-ss-003 (S002/003), TR-lo-001 (S004/005), TR-lo-002 (S006), TR-lo-003 (S007), TR-lo-004 (S005). Story 007 secondary ADR: ADR-003 (`record_level_completion` API shape).
 
 ## Scope
 

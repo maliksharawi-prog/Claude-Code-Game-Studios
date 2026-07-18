@@ -1,6 +1,6 @@
 # HUD Design: Sweet Cascade
 
-> **Status**: Draft — awaiting `/ux-review`
+> **Status**: APPROVED (ux-review, 2026-07-18) — see `design/ux/ux-review-2026-07-18.md`
 > **Author**: ux-designer
 > **Last Updated**: 2026-07-18
 > **Game**: Sweet Cascade (mobile match-3, portrait, one-handed)

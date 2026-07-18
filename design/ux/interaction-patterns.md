@@ -1,6 +1,6 @@
 # Interaction Pattern Library: Sweet Cascade
 
-> **Status**: Draft — awaiting `/ux-review`
+> **Status**: APPROVED (ux-review, 2026-07-18) — see `design/ux/ux-review-2026-07-18.md`
 > **Author**: ux-designer
 > **Last Updated**: 2026-07-18
 > **Version**: 1.0
@@ -12,9 +12,9 @@
 > - `design/gdd/juice-layer.md` (APPROVED, design-review lean) — feedback vocabulary, audio/haptics map
 > - `design/gdd/level-objectives.md` / `design/gdd/scoring-stars.md` (APPROVED) — HUD chip data models (full spec in `design/ux/hud.md`)
 > - `design/art/art-bible.md` (Approved by founder 2026-07-17) — visual language, palette, typography
-> - `design/narrative/characters-and-tone.md` — Fizz voice, placement, line-length rules
-> - `design/ux/accessibility-requirements.md` (Draft, companion document) — accessibility commitments per pattern
-> - `design/ux/hud.md` (Draft, companion document) — HUD chip layout and data bindings
+> - `design/narrative/characters-and-tone.md` (Draft — awaiting founder review) — Fizz voice, placement, line-length rules
+> - `design/ux/accessibility-requirements.md` (APPROVED, companion document) — accessibility commitments per pattern
+> - `design/ux/hud.md` (APPROVED, companion document) — HUD chip layout and data bindings
 > - `prototypes/playable-slice/` — working reference implementation of most patterns below (throwaway code, not a spec source — see `.claude/rules/prototype-code.md`)
 
 > **Purpose of this document**: This is a **formalization pass**, not a fresh design

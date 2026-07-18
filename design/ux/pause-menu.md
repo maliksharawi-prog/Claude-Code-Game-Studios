@@ -1,6 +1,6 @@
 # UX Spec: Pause Menu
 
-> **Status**: Draft — awaiting `/ux-review`
+> **Status**: APPROVED (ux-review, 2026-07-18) — see `design/ux/ux-review-2026-07-18.md`
 > **Author**: ux-designer
 > **Last Updated**: 2026-07-18
 > **Screen / Flow Name**: `Pause` — Overlay Layer state `O2`; composite states `(B3,[O2])` and `(B3,[O2,O3])` (`design/gdd/screen-flow.md` § Detailed Rules 1)
@@ -9,7 +9,7 @@
 > - `design/gdd/screen-flow.md` (APPROVED — Overlay Layer, State Transition Table `T8`–`T14`, Back/OS-Back Policy § 3, Modal vs. Full-Screen Policy § 4, Data Contract § 5, Formula 5)
 > - `design/gdd/save-persistence.md` (APPROVED — § 3 Save Triggers, § 10 No Mid-Level Resume — the exact scope of what "no resume" does and does not cover)
 > - `design/gdd/juice-layer.md` (APPROVED — § 3 Reveal Queue suspension/fast-forward rule, § 10 `juice_input_lock` and its composition into `screen-flow.md`'s Formula 5)
-> - `design/gdd/level-objectives.md` (Revised — § Detailed Rules 9, confirms `record_level_completion()` fires on WIN only, never on an abandoned/quit attempt)
+> - `design/gdd/level-objectives.md` (APPROVED — § Detailed Rules 9, confirms `record_level_completion()` fires on WIN only, never on an abandoned/quit attempt)
 > **Related ADRs**: ADR-001 — Engine Selection: Unity 6.3 LTS
 > **Related UX Specs**:
 > - `design/ux/interaction-patterns.md` — reuses Overlay Open/Dismiss (Modal Card), No-Confirmation Exit — Quit to Map, OS/Hardware Back Mapping, Icon Button (Chrome), Button (Primary CTA)/(Secondary) patterns verbatim

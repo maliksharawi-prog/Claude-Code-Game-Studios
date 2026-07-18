@@ -5,7 +5,29 @@
 > **GDD**: `design/gdd/board-engine.md` (Rev 2) · `design/gdd/special-candies.md`
 > **Architecture Module**: `SweetCascade.Domain` — BoardModel (grid truth, swap, match, gravity/refill, cascade loop, reshuffle, `chain_index`, event emission), MoveResolver sink pipeline, the full BoardEvent catalog, SpecialResolver (combo matrix + F8 passive detonation) implementing the four seams
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories board-engine-specials`
+> **Stories**: 15 stories created — see the Stories table below.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Board data model, cell/piece state, column segmentation & query API | Logic | Ready | ADR-005 |
+| 002 | Match detection (runs-only, MIN_RUN_LENGTH = 3, overlap-union) | Logic | Ready | ADR-005 |
+| 003 | Four extension seams (`ISpecialResolver`) with no-op MVP defaults | Integration | Ready | arch §8.1 |
+| 004 | Gravity & segment-scoped refill (bootstrap-retry vs cascade-uniform) | Logic | Ready | ADR-004 |
+| 005 | Swap rules, validity (F2) & single-step resolution | Logic | Ready | ADR-005 |
+| 006 | Cascade loop, `chain_index`, seam-4 fixpoint & termination caps | Logic | Ready | ADR-005 |
+| 007 | No-valid-move detection & reshuffle (Fisher–Yates, regen fallback) | Logic | Ready | ADR-004 |
+| 008 | Level bootstrap procedure & manifest ordinal resolution (F1) | Integration | Ready | ADR-006 |
+| 009 | `MoveResolver` sink, ordered per-move sequence & `PieceSnapshot` completeness | Integration | Ready | ADR-005 |
+| 010 | Determinism master gate (byte-identical state & signal sequence) | Logic | Ready | ADR-005 |
+| 011 | Cell-size / touch-target floor proof across 3–9 grid range (F4) | Logic | Ready | N/A |
+| 012 | `SpecialResolver` creation rules (seam 3, F1–3) | Logic | Ready | arch §8.1 |
+| 013 | `SpecialResolver` swap-triggered combo matrix (seams 1&2, F4–7) | Logic | Ready | arch §8.1 |
+| 014 | `SpecialResolver` passive chain & bomb detonation (seam 4, F8) + Harvest | Logic | Ready | arch §8.1 |
+| 015 | `SpecialResolver` seam-compat, reshuffle & determinism closers | Integration | Ready | arch §8.1 |
+
+> **TR coverage**: TR-be-001 (S001/002/005/006/009/010), TR-be-002 (S003), TR-be-003 (S009/010), TR-be-004 (S006/008), TR-be-005 (S001/004/007/008), TR-sc-001 (S012/013/014/015), TR-sc-002 (S012/015), TR-sc-003 (S009/014/015). Story 011 (Formula 4 touch-target proof) has no dedicated board TR — flagged for TR assignment (cross-cutting rendering/touch concern; may re-home to E05/E08).
 
 ## Scope
 

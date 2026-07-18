@@ -11,7 +11,7 @@
 ## Context
 
 **GDD**: `design/gdd/board-engine.md` (Rev 2) — Formula 4 (Touch-Target Floor Proof), Acceptance Criteria "Touch-Target Floor Proof (Formula 4)"
-**Requirement**: `TR-be-???` *(no board TR in `tr-registry.yaml` owns the cell-size/touch-target proof — it is a cross-cutting rendering assumption the board GDD closes on behalf of `touch-input.md`/`level-data-format.md`. Flagged for TR assignment; nearest architectural home is board-engine Formula 4. See note below.)*
+**Requirement**: `TR-be-006` *(no board TR in `tr-registry.yaml` owns the cell-size/touch-target proof — it is a cross-cutting rendering assumption the board GDD closes on behalf of `touch-input.md`/`level-data-format.md`. Flagged for TR assignment; nearest architectural home is board-engine Formula 4. See note below.)*
 
 **ADR Governing Implementation**: ADR: N/A — pure geometric constant/math proof; no architectural pattern required. Governed by `design/gdd/board-engine.md` Formula 4 (a rendering-layout assumption BoardModel documents but does not own the rendering of).
 **ADR Decision Summary**: — (no ADR; the proof is a closed-form `min(available_w/gw, available_h/gh) ≥ 44` check over the 49 schema-legal `(gw, gh)` pairs.)

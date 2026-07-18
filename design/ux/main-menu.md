@@ -1,6 +1,6 @@
 # UX Spec: Main Menu — World Map (`B2`)
 
-> **Status**: Draft — awaiting `/ux-review`
+> **Status**: APPROVED (ux-review, 2026-07-18) — see `design/ux/ux-review-2026-07-18.md`
 > **Author**: ux-designer
 > **Last Updated**: 2026-07-18
 > **Screen / Flow Name**: `WorldMap` — composite states `(B2,[])`, `(B2,[O1])`, `(B2,[O3])` (`design/gdd/screen-flow.md` § Detailed Rules 1)

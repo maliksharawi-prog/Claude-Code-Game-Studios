@@ -1,6 +1,6 @@
 # Accessibility Requirements: Sweet Cascade
 
-> **Status**: Draft — awaiting `/ux-review`
+> **Status**: APPROVED (ux-review, 2026-07-18) — see `design/ux/ux-review-2026-07-18.md`
 > **Author**: ux-designer
 > **Last Updated**: 2026-07-18
 > **Accessibility Tier Target**: See § Accessibility Tier Definition below — this document states a
@@ -19,8 +19,8 @@
 > - `design/gdd/save-persistence.md` (APPROVED) — Settings sub-schema (toggle storage, defaults)
 > - `design/art/art-bible.md` (Approved by founder 2026-07-17) — palette, colorblind double-coding,
 >   typography, contrast
-> - `design/ux/interaction-patterns.md` (Draft, companion document)
-> - `design/ux/hud.md` (Draft, companion document)
+> - `design/ux/interaction-patterns.md` (APPROVED, companion document)
+> - `design/ux/hud.md` (APPROVED, companion document)
 > - `.claude/docs/technical-preferences.md` — Input & Platform section (Touch primary, no gamepad)
 
 > **Why this document exists**: This document captures the **project-wide accessibility commitments
