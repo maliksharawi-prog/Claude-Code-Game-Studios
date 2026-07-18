@@ -23,7 +23,7 @@
 | **Target Audience** | Casual players 25-45, short-session mobile players (see Player Profile) |
 | **Player Count** | Single-player core loop with asynchronous social layer (leaderboards, friend challenges) |
 | **Session Length** | 5-15 minutes (2-5 levels per session) |
-| **Monetization** | F2P intent (lives/boosters model) — **not designed yet; fun-first, monetization deferred until after core loop validation** |
+| **Monetization** | F2P — **direction chosen by founder 2026-07-18: consumable boosters (IAP) + rewarded-ads hybrid, combined.** Detailed design deferred to Phase 2 and MUST be co-designed with `booster-brewing.md` so the paid and earned booster loops form one system (earned loop stays primary). Anti-pillars remain binding: never sell guaranteed completion, never pay-to-win stars. |
 | **Estimated Scope** | Large (9-14 months to live-service launch, solo + AI studio agents; MVP in 6-8 weeks) |
 | **Comparable Titles** | Candy Crush Saga, Royal Match, Gardenscapes |
 
