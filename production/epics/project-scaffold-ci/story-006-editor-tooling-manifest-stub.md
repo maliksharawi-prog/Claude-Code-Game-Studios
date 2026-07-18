@@ -1,7 +1,7 @@
 # Story 006: Editor tooling folder layout + manifest-generator stub placement
 
 > **Epic**: Project Scaffold & CI Activation (E01)
-> **Status**: Ready
+> **Status**: In Progress — file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass (.meta/lock/URP-asset items) per qa-plan-sprint-01. See production/sprint-status.yaml.
 > **Layer**: Foundation (infrastructure / editor tooling scaffold)
 > **Type**: Config/Data
 > **Estimate**: 1 day

@@ -1,7 +1,7 @@
 # Story 001: Unity 6.3 project shell — URP Render Graph, portrait player settings, package manifest
 
 > **Epic**: Project Scaffold & CI Activation (E01)
-> **Status**: Ready
+> **Status**: In Progress — file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass (.meta/lock/URP-asset items) per qa-plan-sprint-01. See production/sprint-status.yaml.
 > **Layer**: Foundation (infrastructure)
 > **Type**: Integration
 > **Estimate**: 2 days

@@ -1,7 +1,7 @@
 # Story 003: Domain-purity CI denylist scan (L2) + injected-violation self-test
 
 > **Epic**: Project Scaffold & CI Activation (E01)
-> **Status**: Ready
+> **Status**: In Progress — file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass (.meta/lock/URP-asset items) per qa-plan-sprint-01. See production/sprint-status.yaml.
 > **Layer**: Foundation (infrastructure / CI)
 > **Type**: Integration
 > **Estimate**: 1.5 days
