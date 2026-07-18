@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""generate_extra_rng_vectors.py -- one-off generator for
+src/SweetCascade/Assets/Tests/EditMode/Rng/golden/rng_golden_v1_draws.json.
+
+Written for the E02-001..004 test-authoring pass. Extends (never edits)
+rng_golden_v1.json with additional cross-language-verified draw sequences
+consumed by RngStream_Tests.cs / RngService_Tests.cs, generated from the SAME
+independent Python reference primitives that produced rng_golden_v1.json --
+this script IMPORTS tools/ci/rng_reference.py's combine()/mix32()/
+stream_seed()/master_seed_level()/RngStream/fnv1a32()/STREAM_REGISTRY
+verbatim rather than reimplementing any of them, so rng_reference.py's own
+check_anchors() guarantee still covers every value below transitively.
+
+Run (from repo root):
+    PYTHONPATH=tools/ci python3 tools/ci/generate_extra_rng_vectors.py \
+        --write src/SweetCascade/Assets/Tests/EditMode/Rng/golden/rng_golden_v1_draws.json
+
+New sections added (none overlap rng_golden_v1.json's existing sections):
+  - next_int_extra_ranges: NextInt(min,max) sequences for (min,max) pairs not
+    covered by rng_golden_v1.json's NextInt(0,4) table -- cross-checks
+    RngStream.NextInt's determinism/bounds contract with an independent
+    oracle across wider/negative/degenerate ranges.
+  - special_drop_raw: stream_id=2 ("special-drop") raw-draw sequences at the
+    same two master seeds already used for board-refill's next_raw_64 table
+    (500 and the F1 anchor) -- lets RngService_Tests's stream-isolation test
+    assert the board-refill sequence AND the interleaved special-drop
+    sequence both match an independent oracle, not just each other.
+  - fork_extra: two additional ForkStream vectors -- a second label
+    ("probe2") off the same parent as rng_golden_v1.json's "fork" section
+    (proves label changes the child), and the same label ("probe") off a
+    different parent ("special-drop") (proves parent identity is part of the
+    derivation, not just the label).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+import rng_reference as ref
+
+F1_ANCHOR_MASTER_SEED = ref.master_seed_level(1007, 3)  # 2824445292 -- matches rng_golden_v1.json
+SEED_500 = 500
+
+
+def u(n: int) -> str:
+    return str(n & ref.MASK32)
+
+
+def i(n: int) -> str:
+    """Plain signed-decimal string for an ordinary (non-uint-state) int value, e.g. a NextInt result."""
+    return str(n)
+
+
+def fresh_stream(master_seed: int, stream_id: int) -> "ref.RngStream":
+    return ref.RngStream(ref.stream_seed(master_seed, stream_id))
+
+
+def build() -> dict:
+    assert ref.check_anchors(), "aborting -- anchor check failed"
+
+    # -- next_int_extra_ranges --------------------------------------------
+    next_int_extra_ranges = {}
+    for (min_v, max_v, count) in [(10, 20, 20), (-50, 50, 20), (7, 7, 5)]:
+        s = fresh_stream(F1_ANCHOR_MASTER_SEED, ref.BOARD_REFILL_ID)
+        next_int_extra_ranges[f"{min_v}_{max_v}"] = {
+            "master_seed": u(F1_ANCHOR_MASTER_SEED),
+            "stream_name": ref.BOARD_REFILL_NAME,
+            "min": min_v,
+            "max": max_v,
+            "values": [i(s.next_int(min_v, max_v)) for _ in range(count)],
+        }
+
+    # -- special_drop_raw ---------------------------------------------------
+    special_drop_raw = {}
+    for ms, label in [(SEED_500, "seed_500"), (F1_ANCHOR_MASTER_SEED, "f1_anchor_level1007_attempt3")]:
+        s = fresh_stream(ms, ref.STREAM_REGISTRY[1][1])  # special-drop = id 2
+        special_drop_raw[label] = {
+            "master_seed": u(ms),
+            "stream_name": "special-drop",
+            "values": [u(s.next_raw()) for _ in range(30)],
+        }
+
+    # -- fork_extra -----------------------------------------------------
+    board_refill_initial = ref.stream_seed(F1_ANCHOR_MASTER_SEED, ref.BOARD_REFILL_ID)
+    special_drop_initial = ref.stream_seed(F1_ANCHOR_MASTER_SEED, ref.STREAM_REGISTRY[1][1])
+
+    def fork_vector(parent_name: str, parent_initial: int, label: str, n: int) -> dict:
+        child_seed = ref.mix32(ref.combine(parent_initial, ref.fnv1a32(label)))
+        child = ref.RngStream(child_seed)
+        return {
+            "master_seed": u(F1_ANCHOR_MASTER_SEED),
+            "parent_stream_name": parent_name,
+            "parent_initial_seed": u(parent_initial),
+            "label": label,
+            "child_seed": u(child_seed),
+            "draws": [u(child.next_raw()) for _ in range(n)],
+        }
+
+    fork_extra = {
+        "board_refill_probe2": fork_vector(ref.BOARD_REFILL_NAME, board_refill_initial, "probe2", 8),
+        "special_drop_probe": fork_vector("special-drop", special_drop_initial, "probe", 8),
+    }
+
+    return {
+        "algorithm_version": ref.ALGORITHM_VERSION,
+        "generated_by": "tools/ci/rng_reference.py (imported by scratchpad generate_extra_rng_vectors.py)",
+        "note": (
+            "ADDITIVE ONLY -- never mutates rng_golden_v1.json. Generated by importing "
+            "tools/ci/rng_reference.py's combine()/mix32()/stream_seed()/RngStream/fnv1a32() "
+            "verbatim (no reimplementation). Command: PYTHONPATH=tools/ci python3 "
+            "generate_extra_rng_vectors.py --write "
+            "src/SweetCascade/Assets/Tests/EditMode/Rng/golden/rng_golden_v1_draws.json"
+        ),
+        "next_int_extra_ranges": next_int_extra_ranges,
+        "special_drop_raw": special_drop_raw,
+        "fork_extra": fork_extra,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--write", type=str, required=True, help="Path to write rng_golden_v1_draws.json")
+    args = parser.parse_args()
+
+    fixture = build()
+    out_path = Path(args.write)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8", newline="\n") as f:
+        json.dump(fixture, f, indent=2, sort_keys=False)
+        f.write("\n")
+    print(f"Wrote extra draws fixture: {out_path} ({out_path.stat().st_size} bytes)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
