@@ -420,3 +420,126 @@ promise that color-bomb support requires no Board Engine schema change.
 Both are additive fixes to existing structures, not a redesign of the
 resolution loop, the four-seam model, or the determinism architecture —
 all of which hold up well under adversarial recomputation.
+
+---
+
+## Re-review (Revision 2) — 2026-07-18 — Verdict: APPROVED
+
+**Mode**: `/design-review` focused re-review (targeted verification of
+Revision 2's changes only, not a full re-read). **Reviewer**: game-designer
+(self-authored analysis; no specialist subagents spawned for this focused
+pass). **Re-review**: Yes — prior verdict was NEEDS REVISION on 2026-07-18
+(2 blocking, 4 advisory).
+
+### Item-by-item verification
+
+1. **Blocking 1 (color data in event stream) — RESOLVED, verified.**
+   Every piece-reporting signal now carries a `PieceSnapshot = {cell, color,
+   special_type}` or equivalent inline fields: `swap_started`
+   (`piece_a`/`piece_b`), `special_activated` (`piece_a`/`piece_b`/
+   `cleared_pieces`), `match_cleared` (`cleared_pieces`), `special_spawned`
+   (`cell`, `special_type`, `color`), and the new `pieces_spawned`
+   (`pieces: Array[PieceSnapshot], source: enum{BOOTSTRAP, CASCADE_REFILL}`)
+   covering bootstrap fill and every `Refilling` state. `swap_rejected`/
+   `swap_accepted` correctly remain bare-cell — justified (no piece
+   cleared/spawned/placed by those events). Recomputed the new worked
+   2-step-cascade walkthrough (§ Detailed Rules 13) cell-by-cell against the
+   stated pre-/post-swap board: the clear counts (3 + 3 = 6 red), the
+   `pieces_spawned` refill contents, `chain_index` progression, and the
+   final `cascade_ended(total_cells_cleared=6)` all check out arithmetically.
+   **One data error found and fixed**: the walkthrough's `swap_started`
+   line had `piece_a`/`piece_b` colors reversed relative to the stated
+   pre-swap board (`piece_a` at cell `(1,4)` should snapshot red(0), not
+   green(2); `piece_b` at `(2,4)` should snapshot green(2), not red(0)) —
+   corrected in place, consistent with the document's own stated rule that
+   `PieceSnapshot` captures pre-swap state. Per-color tallies are fully
+   derivable from the event stream alone, satisfying the deferred-replay
+   guarantee.
+2. **Blocking 2 (seam 3 color override) — RESOLVED, verified.** Seam 3's
+   signature is consistently `resolve_special_spawns(runs,
+   swap_anchor_cells) -> Map[cell, SpecialSpawn]` with `SpecialSpawn =
+   {special_type: int, color: int | null}` everywhere it is referenced: the
+   seam table, the no-op default ("Returns an empty map"), § Detailed Rules
+   1's colorless-support claim, the worked example (striped + color-bomb
+   cases), the Edge Cases table's malformed-color fallback row, and the
+   Acceptance Criteria (`test_seam_3_color_override_null_produces_colorless_piece`,
+   `test_seam_3_color_override_explicit_value_produces_colored_piece`,
+   `test_seam_3_invalid_color_falls_back_to_run_color`). Grepped for the old
+   `Map[cell, special_type]` shape — zero stragglers found.
+3. **Advisories — all four confirmed correctly resolved.**
+   - `Run` now carries `color` directly (§ Detailed Rules 4); grepped for
+     the old `{orientation, length, cells}` shape (no `color`) — zero
+     stragglers.
+   - `swap_anchor_cells` for cascade steps 2+ is explicitly pinned to the
+     empty set (§ Detailed Rules 3), with a matching Acceptance Criterion
+     (`test_swap_anchor_cells_empty_for_cascade_steps_beyond_first`).
+   - Seam 4 calling semantics are fully specified: Board Engine owns the
+     fixpoint loop, seam 4 performs one single-pass expansion per call,
+     iteration is capped by `MAX_CHAIN_EXPANSION_ITERATIONS` — cross-checked
+     against Formula 6's sibling-cap framing and the corresponding
+     Acceptance Criteria. Consistent throughout.
+   - The spawn+clear composite-combo item is logged in Open Questions with
+     a concrete v2 step-plan sketch (`{spawns, extra_clears, transforms}`),
+     correctly scoped as "not built until `special-candies.md` demands it."
+   - Revision 2 changelog (document header) accurately describes all of the
+     above; no overstated or understated claims found.
+4. **Coherence sweep — 3 additional mechanical stragglers found and fixed
+   directly (fix policy: mechanical, not design inadequacies):**
+   - Formula 5's worked example referenced the pre-revision field name
+     `cleared_cells` twice ("could... carry in `cleared_cells`", "emitting
+     the correct, complete `cleared_cells` list") — corrected to
+     `cleared_pieces` to match the current `match_cleared` payload.
+   - The Match Detection Acceptance Criteria's
+     `test_l_shape_intersection_unions_into_one_clear_set` referenced
+     `cleared_cells` — corrected to `cleared_pieces`.
+   - The `board_reshuffled` signal catalog row states its piece-reassignment
+     scoping decision is "deliberately out of this revision's scope; see
+     Open Questions," but no matching Open Questions entry existed — this
+     was a dangling cross-reference. Added an Open Questions row
+     documenting the deferred question (whether `board_reshuffled` needs
+     per-cell reassignment data for deferred-replay parity with the other
+     Revision 2 signals), owned by `systems-designer`, to be revisited at
+     `juice-layer.md` authoring. This does not reopen Blocking 1 — the
+     document's own scoping rationale (reshuffle is a rare, non-move,
+     synchronously-recoverable board correction, unlike mid-cascade
+     clears/spawns) is sound and unchanged; only the broken pointer to a
+     nonexistent Open Questions entry was fixed.
+   - `rng-service.md`'s Board Engine Dependencies row was independently
+     re-verified: it states Board Engine "Consumes `board-refill` stream...
+     AND for the 'no valid moves' reshuffle (direct draws with pinned
+     row-major traversal — `board-engine.md` § Detailed Rules 11);
+     `fork_stream()` is available but not currently used," which matches
+     `board-engine.md` § Detailed Rules 11 exactly (`shuffle("board-refill",
+     list)` over a row-major-collected list, no `fork_stream()` call). No
+     discrepancy remains — this was already corrected on `rng-service.md`'s
+     side before this re-review and required no further action.
+
+### Fixes applied this pass (all mechanical, per fix policy)
+
+1. `board-engine.md` Formula 5 worked example: `cleared_cells` → `cleared_pieces` (2 occurrences).
+2. `board-engine.md` Acceptance Criteria (`test_l_shape_intersection_unions_into_one_clear_set`): `cleared_cells` → `cleared_pieces`.
+3. `board-engine.md` § Detailed Rules 13 worked walkthrough: `swap_started` `piece_a`/`piece_b` color values corrected (were reversed relative to the stated pre-swap board).
+4. `board-engine.md` Open Questions: added a row for `board_reshuffled`'s payload-sufficiency scoping decision, resolving the dangling "see Open Questions" cross-reference in the signal catalog.
+5. `board-engine.md` header `*Status:*` line updated to `Reviewed — APPROVED (re-review, 2026-07-18)`.
+
+### Verdict: APPROVED
+
+Blocking items: 0 (both prior blockers confirmed genuinely resolved) |
+Advisory items outstanding: 0 (all four confirmed resolved; one new
+low-priority Open Questions item logged, not blocking) | Mechanical fixes
+applied this pass: 4
+Prior verdict resolved: Yes — both Blocking 1 and Blocking 2 from the
+2026-07-18 first review are confirmed resolved with no remaining gaps; the
+Revision 2 changelog's claims match the document's actual content
+throughout.
+
+**Summary**: Revision 2 correctly and completely resolves both blocking
+findings from the first review — the signal catalog now carries full piece
+identity on every cell-referencing event (enabling `collect_color` and
+deferred-replay rendering), and seam 3's `SpecialSpawn.color` override
+delivers genuinely colorless color-bomb support with no schema-change caveat
+needed. All four advisory items are also cleanly resolved with matching
+Acceptance Criteria. This re-review's coherence sweep caught four residual
+mechanical stragglers (two stale field-name references, one worked-example
+data-reversal error, one dangling cross-reference) — all fixed in place;
+none indicate a deeper design gap. The document is implementation-ready.
