@@ -1,6 +1,6 @@
 # Match-3 Board Engine
 
-*Status: Reviewed — NEEDS REVISION (design-review lean, 2026-07-18) — see `design/gdd/reviews/board-engine-review-log.md`*
+*Status: Revised — blocking items resolved, awaiting re-review (2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Core · Priority: MVP · Phase: MVP · Category: Gameplay*
@@ -8,6 +8,11 @@
 *Depends On: RNG Service (`design/gdd/rng-service.md`, APPROVED), Touch & Input System (`design/gdd/touch-input.md`, APPROVED), Level Data Format (`design/gdd/level-data-format.md`, APPROVED)*
 *Depended On By: Special Candies & Combo Matrix, Scoring & Star Thresholds, Level Objective & Move-Limit System, Juice Layer — VFX & Audio Hooks, Game UI/Screens Flow (all not yet authored — forward dependencies, per `design/gdd/systems-index.md`)*
 *Source: `design/gdd/systems-index.md` · `prototypes/sweet-cascade-concept/REPORT.md` + `prototype.html` · `design/art/art-bible.md` · `.claude/docs/technical-preferences.md`*
+
+**Revision 2 changelog (2026-07-18, resolves `reviews/board-engine-review-log.md`):**
+- **Blocking 1 resolved** — every piece-reporting signal payload now carries full piece identity `(cell, color, special_type)`; added the `pieces_spawned` signal (per-piece cell + color + source `bootstrap|cascade_refill`); § Detailed Rules 13's deferred-replay guarantee extended with a worked 2-step-cascade walkthrough deriving per-color tallies from events alone.
+- **Blocking 2 resolved** — seam 3 return type extended to `Map[cell, SpecialSpawn]` with `SpecialSpawn = {special_type, color: int | null}`; `null` → colorless special (`COLOR_NONE = -1`, color bomb); § Detailed Rules 1's colorless-support claim now holds; worked examples updated.
+- **Advisories** — `Run` structure now carries `color` directly (§4); `swap_anchor_cells` defined as empty for cascade steps 2+ (run-middle anchoring applies); seam 4 calling semantics pinned (Board Engine iterates to fixpoint or `MAX_CHAIN_EXPANSION_ITERATIONS`; extensions never recurse internally); spawn+clear composite combos logged in Open Questions with a v2 step-plan sketch.
 
 ---
 
@@ -108,7 +113,7 @@ log already established for its own consumption of these fields).
 | Field | Type | Range | Description |
 |---|---|---|---|
 | `piece_id` | int | monotonically increasing, unique for the piece's lifetime | Assigned at spawn (bootstrap or refill), retired at clear. Exists so the Juice Layer can animate one persistent visual object through gravity moves rather than treating a cell's occupant as replaced every frame — mirrors the concept prototype's persistent-DOM-element tile model (`prototype.html`'s `makeTile`/`place` pattern). |
-| `color` | int | `[-1, pool_size-1]` | Index into the level's `color_pool` (Level Data Format), OR the reserved sentinel `COLOR_NONE = -1`, meaning "colorless." A piece with `color = -1` is permanently excluded from every color-based run comparison in match detection (§ Detailed Rules 4). Board Engine defines and enforces this sentinel itself — it does not need to know *why* a piece is colorless to exclude it correctly, which keeps colorless-special support (e.g., a future color-bomb type) entirely inside Special Candies' scope with no Board Engine change required. |
+| `color` | int | `[-1, pool_size-1]` | Index into the level's `color_pool` (Level Data Format), OR the reserved sentinel `COLOR_NONE = -1`, meaning "colorless." A piece with `color = -1` is permanently excluded from every color-based run comparison in match detection (§ Detailed Rules 4). Board Engine defines and enforces this sentinel itself — it does not need to know *why* a piece is colorless to exclude it correctly, which keeps colorless-special support (e.g., a color-bomb type) entirely inside Special Candies' scope: seam 3's `color` override on its `SpecialSpawn` return value (§ Detailed Rules 3) is the one mechanism needed to assign `COLOR_NONE` to a spawned piece, with no further Board Engine schema change required. |
 | `special_type` | int | `{0} ∪ opaque non-zero values` | `SPECIAL_NONE = 0` is the only value Board Engine itself assigns or interprets. Any non-zero value is opaque data Board Engine stores and forwards in signal payloads but never reads the meaning of — its full vocabulary (`STRIPE_H`, `STRIPE_V`, `BOMB`, etc.) is owned entirely by `special-candies.md` (not yet authored). Level Data Format v1 has no pre-placed-special field, so every piece placed at bootstrap has `special_type = SPECIAL_NONE`; non-zero values only ever arise via the special-spawn seam (§ Detailed Rules 3, seam 4) during play. |
 | `row`, `col` | int | within grid bounds | The piece's current position. Always kept in sync with the grid's own `OCCUPIED` cell record — Board Engine never allows a piece's stored coordinates and the grid's record of where it sits to diverge, even transiently within one logic tick. |
 
@@ -184,7 +189,17 @@ the same `board-refill` stream):
    deterministic — same seed always produces the same retry count and the
    same fallback outcome — and is expected to be reached, if ever, only on
    a pathological `color_pool`/`cell_mask` combination Level Data Format's
-   V7/V11 rules make vanishingly unlikely).
+   V7/V11 rules make vanishingly unlikely). Immediately upon completing
+   this fill — the full board now populated by steps 6 (pre-placed) and 7
+   (RNG-filled) combined — emit one `pieces_spawned(pieces, source =
+   BOOTSTRAP)` (§ Detailed Rules 7) whose `pieces` array contains a
+   `PieceSnapshot` for every playable cell on the board, in the same
+   row-major order used to fill them. This is what lets the Juice Layer
+   render the level's opening "candies drop into place" beat, and any other
+   consumer recover every initial cell's `color`/`special_type` (step 8's
+   automatic bootstrap cascade, immediately below, can mutate the board
+   again before the very next signal, so this snapshot — not a later query
+   — is each initial piece's only recoverable record).
 8. Run one Matching pass (§ Detailed Rules 4) against the fully-populated
    board. Because pre-placed pieces (step 6) are never filtered for
    accidental matches — the retry-until-no-match guarantee in step 7 only
@@ -223,8 +238,68 @@ never the reverse, per `systems-index.md`).
 |---|---|---|---|---|
 | 1. Activation check | `is_special_activation_swap(piece_a, piece_b) -> bool` | During swap validity determination (Formula 2), for every `swap_request` | Always returns `false` | Lets a swap be valid *without* producing a color match — e.g., swapping a color-bomb with a regular candy. |
 | 2. Activation clears | `resolve_special_activation_clears(piece_a, piece_b) -> Set[cell]` | Only when seam 1 returned `true` for this swap | Never called (seam 1 already gates it) | Returns the cell set the activation clears, bypassing normal run detection for this step's trigger. |
-| 3. Special spawns | `resolve_special_spawns(runs, swap_anchor_cells) -> Map[cell, special_type]` | Every cascade step, immediately after Matching, before Clearing finalizes the clear set | Returns an empty map | Exempts specific cells from clearing and transforms them into specials instead. `swap_anchor_cells` — the cells involved in the triggering swap — are passed through so spawn anchoring can prefer them, per the concept prototype's validated finding that spawning at the swapped cell (not mid-run) reads as deliberate rather than random. |
-| 4. Chain expansion | `expand_special_chain_reaction(cleared_set) -> Set[cell]` | Every cascade step, after seam 3, on the finalized raw clear set | Returns the input set unchanged (no expansion) | Lets specials caught within any clear set (not only the triggering swap's) recursively trigger further clears — e.g., a stripe clears its row, a bomb caught mid-cascade clears a color. This is the mechanism behind the "special-×-special chains were the best moments" finding in `REPORT.md`. |
+| 3. Special spawns | `resolve_special_spawns(runs, swap_anchor_cells) -> Map[cell, SpecialSpawn]`, where `SpecialSpawn = {special_type: int, color: int \| null}` | Every cascade step, immediately after Matching, before Clearing finalizes the clear set | Returns an empty map | Exempts specific cells from clearing and transforms them into specials instead. `color` lets the spawned piece override its color: an explicit `color_pool` index produces a **colored** special (e.g., striped — the resolver typically echoes the triggering run's own `color`, now directly available on `Run`, § Detailed Rules 4); the literal value `null` produces a **colorless** special (e.g., a color bomb — Board Engine assigns `COLOR_NONE = -1`). `swap_anchor_cells` — the cells involved in the triggering swap — are passed through so spawn anchoring can prefer them, per the concept prototype's validated finding that spawning at the swapped cell (not mid-run) reads as deliberate rather than random. See "`swap_anchor_cells` for cascade steps 2+" below for its value on non-triggering steps. |
+| 4. Chain expansion | `expand_special_chain_reaction(cleared_set) -> Set[cell]` | Every cascade step, after seam 3 — called **repeatedly by Board Engine** against the growing clear set until a call returns its input unchanged (fixpoint) or `MAX_CHAIN_EXPANSION_ITERATIONS` (Tuning Knobs) is reached, whichever comes first | Returns the input set unchanged (no expansion) on its first (and, since the input is already stable, only) call | Lets specials caught within any clear set (not only the triggering swap's) recursively trigger further clears — e.g., a stripe clears its row, a bomb caught mid-cascade clears a color. This is the mechanism behind the "special-×-special chains were the best moments" finding in `REPORT.md`. See "Seam 4 calling semantics" below. |
+
+**`swap_anchor_cells` for cascade steps 2+ (resolves an advisory finding
+from the 2026-07-18 design review).** `swap_anchor_cells` is populated only
+for the step that directly follows a triggering `swap_request`:
+
+- `chain_index = 1` **and** `trigger_source ∈ {SWAP_MATCH,
+  SPECIAL_ACTIVATION}`: `swap_anchor_cells = {cell_a, cell_b}`, the two
+  cells named in the triggering swap — regardless of whether validity came
+  from a normal run match or a seam-1 activation.
+- `chain_index = 1` **and** `trigger_source = BOOTSTRAP`: `swap_anchor_cells
+  = {}` (empty set) — bootstrap's automatic cascade pass (§ Detailed Rules
+  2, step 8) has no originating swap to anchor to.
+- `chain_index ≥ 2`, **any** `trigger_source`: `swap_anchor_cells = {}`
+  (empty set), always. By the second cascade step, the triggering swap's
+  cells have already cleared or moved at least once (gravity has run), so
+  they carry no meaningful anchor relationship to the *new* run(s) a later
+  step detects — Board Engine never fabricates or carries forward a stale
+  anchor. A seam-3 resolver that wants deterministic anchoring for chain
+  steps 2+ must define its own fallback rule entirely within its own logic
+  (e.g., a run's first cell in scan order, or its center cell) — Board
+  Engine takes no position on what that fallback should be, consistent with
+  its policy of owning mechanism, not special-candy behavior.
+
+**Seam 4 calling semantics (resolves an advisory finding from the
+2026-07-18 design review).** Board Engine, not the seam-4 resolver, owns
+the recursive fixpoint loop. Each individual call to
+`expand_special_chain_reaction(cleared_set)` is expected to perform exactly
+**one single-pass expansion** (e.g., "these newly-caught bombs in the
+current set detonate their radius") and return the resulting superset — it
+is never required to recurse internally. Board Engine re-invokes the seam
+against its own growing result: call 1 receives the raw clear set (after
+seam 3); if the returned set is a strict superset of the input, Board
+Engine calls again with that superset as the new input; this repeats until
+either a call returns its input unchanged (a fixpoint — no further
+expansion available) or the call count for this cascade step reaches
+`MAX_CHAIN_EXPANSION_ITERATIONS` (Tuning Knobs, default `10`), whichever
+comes first. **Termination guarantee.** This gives Board Engine two
+independent, complementary iteration caps that together guarantee the
+resolution loop always halts, even against an adversarial or buggy seam-4
+resolver: `MAX_CHAIN_EXPANSION_ITERATIONS` bounds *within-step* seam-4
+calls (this section), and `MAX_CASCADE_DEPTH` (Formula 6) bounds
+*across-step* cascade iterations. Both are pure iteration counters Board
+Engine enforces unconditionally, independent of whatever
+`special-candies.md` implements — see Formula 6 and Edge Cases for the
+shared force-stabilize failure mode both caps use when reached.
+
+**Worked example (seam 3's color override).** A match-4 run of `color = 1`
+("citrus") at cells `(5,2)-(5,5)` fires seam 3 with `swap_anchor_cells =
+{(5,3),(5,4)}` (the swapped pair). A registered resolver wants `(5,3)` (the
+anchor-preferred cell) to become a **striped** candy of the same color, and
+returns `{(5,3): {special_type: STRIPE_H, color: 1}}` — Board Engine
+exempts `(5,3)` from the clear set and spawns a piece there with `color =
+1, special_type = STRIPE_H`, emitting `special_spawned(cell=(5,3),
+special_type=STRIPE_H, color=1, source_run=...)` (§ Detailed Rules 7). For
+a match-5 elsewhere, the same resolver instead wants a **color bomb** and
+returns `{(anchor_cell): {special_type: BOMB, color: null}}` — Board Engine
+spawns a piece there with `color = COLOR_NONE (-1), special_type = BOMB`,
+permanently excluded from future color-based run comparisons (§ Detailed
+Rules 4), delivering genuinely colorless behavior with no Board Engine
+schema change beyond this already-specified contract.
 
 **Defensive validation of seam responses.** Because "Board Engine owns ALL
 validity judgment" is a hard project rule (not just a Board Engine
@@ -233,12 +308,18 @@ by seam 3 or seam 4 that is not part of the current step's actual board
 state (i.e., not a currently `OCCUPIED`, in-bounds cell) is silently
 dropped and logged as a warning — a misbehaving or future-buggy Special
 Candies implementation can never corrupt Board Engine's own state integrity
-(see Edge Cases).
+(see Edge Cases). The same policy applies to a `SpecialSpawn.color` value
+that is present but is neither `null` nor a valid index into the level's
+`color_pool`: it is treated as malformed, Board Engine falls back to the
+exempted cell's originating run's `color` (the same colored-special
+behavior as if the resolver had correctly echoed it), and a warning is
+logged (see Edge Cases).
 
 **Resolution order within one cascade step**: Matching → seam 3 (special
-spawns) → seam 4 (chain expansion, applied to the union of matched-run
-cells minus spawn-exempted cells) → Clearing. Seam 1 and seam 2 apply only
-at the swap-trigger boundary, before the first Matching pass of a move.
+spawns) → seam 4 (chain expansion, applied iteratively to the union of
+matched-run cells minus spawn-exempted cells, per the calling semantics
+above) → Clearing. Seam 1 and seam 2 apply only at the swap-trigger
+boundary, before the first Matching pass of a move.
 
 ### 4. Match Detection (MVP Policy: Runs-Only)
 
@@ -251,7 +332,13 @@ scope note ("no T/L-shape specials — runs of 4/5 only").
 **Algorithm**: for each row, scan left to right; for each column, scan top
 to bottom; a "run" is a maximal sequence of cells whose `color` values are
 equal and not `COLOR_NONE`. Any run with length ≥ 3 is recorded as
-`{orientation, length, cells}`.
+`{orientation, length, cells, color}` — `color` is the run's shared value
+(every cell in a run has the same color, by definition of what makes a run
+a run), included directly on the `Run` structure so a downstream consumer
+(seam 3, Special Candies, Scoring, Level Objective) never has to look up an
+individual cell to know which color a run represents. This addition also
+gives seam 3 a ready-made source color for a colored special spawn (§
+Detailed Rules 3's worked example).
 
 **Overlap/intersection union rule.** When a horizontal run and a vertical
 run share a cell in the same cascade step (an L or T intersection), Board
@@ -327,7 +414,7 @@ either path.
 | `Matching` | A valid swap just executed, or a cascade step's Refilling just completed | Run match detection (§ Detailed Rules 4); if zero runs and this wasn't the swap-trigger step, cascade is over — proceed to `Idle`-pending (reshuffle check, § Detailed Rules 11) | `false` |
 | `Clearing` | Matching found ≥1 run, or seam 1 triggered an activation | Apply seam 3 (spawns) and seam 4 (chain expansion); pop the finalized clear set; increment `chain_index` | `false` |
 | `Falling` | Clearing complete | Gravity compaction, per column segment (§ Detailed Rules 8) | `false` |
-| `Refilling` | Falling complete | Draw new pieces into every still-`EMPTY` cell, per column segment (§ Detailed Rules 9) | `false` |
+| `Refilling` | Falling complete | Draw new pieces into every still-`EMPTY` cell, per column segment (§ Detailed Rules 9); on completion, emit one `pieces_spawned(pieces, source = CASCADE_REFILL)` (§ Detailed Rules 7) covering every cell filled during this pass | `false` |
 | *(loop)* | Refilling complete | Return to `Matching` — this is the cascade loop | `false` |
 | `Reshuffling` | The board would return to `Idle` but `has_available_move()` is `false` | § Detailed Rules 11's reshuffle algorithm | `false` |
 
@@ -382,26 +469,53 @@ snake_case. None of these signals are ever emitted with a delay — they fire
 synchronously, in the order listed below, as the resolution loop passes
 through each state (§ Detailed Rules 6).
 
+**Shared payload type: `PieceSnapshot` (resolves a BLOCKING finding from
+the 2026-07-18 design review — see Cross-References).** Every signal that
+reports a piece being cleared, spawned, or placed carries that piece's full
+identity inline, as a `PieceSnapshot`:
+
+```
+PieceSnapshot = { cell: (int, int), color: int, special_type: int }
+```
+
+`color` and `special_type` use the exact same ranges as `Piece`'s own
+fields (§ Detailed Rules 1): `color ∈ [-1, pool_size-1]` (`-1 = COLOR_NONE`)
+and `special_type ∈ {0} ∪ opaque non-zero values`. A `PieceSnapshot` is a
+**value snapshot at the instant the event fired**, not a live reference —
+it never changes after the signal is emitted, which is what makes it safe
+for a consumer to store and read back later during deferred replay (see §
+Detailed Rules 13's payload-sufficiency guarantee). `Run` (§ Detailed Rules
+4) already carries its own `color` field for the same reason.
+
 | Signal | Payload | Fires When |
 |---|---|---|
 | `board_bootstrapped` | `rows: int, cols: int, cell_mask: Array[String], manifest_index: int` | End of `Bootstrapping`, before first `Idle` |
 | `board_input_enabled_changed` | `enabled: bool` | Every transition into or out of `Idle` — this is the exact boolean Touch & Input's `board_input_enabled` contract reads (`touch-input.md` §4) |
-| `swap_started` | `cell_a: (int,int), cell_b: (int,int)` | Instant the model swap executes, before validity is known (§ Detailed Rules 5) |
-| `swap_rejected` | `cell_a, cell_b, reason: enum{NOT_ADJACENT, NO_MATCH_NO_ACTIVATION}` | The swap reverts | 
-| `swap_accepted` | `cell_a, cell_b, trigger_source: enum{SWAP_MATCH, SPECIAL_ACTIVATION}` | The swap is valid and a move is spent |
-| `special_activated` | `cell_a, cell_b, cleared_cells: Array[(int,int)]` | Seam 1 returned `true` for this swap; fires immediately **before** the first `match_cleared` of that move |
-| `match_cleared` | `chain_index: int, cleared_cells: Array[(int,int)], run_data: Array[Run], trigger_source: enum` | Every completed Clearing state |
-| `special_spawned` | `cell: (int,int), special_type: int, source_run: Run` | Once per cell exempted and transformed by seam 3, during the same Clearing pass as the `match_cleared` it belongs to |
+| `pieces_spawned` | `pieces: Array[PieceSnapshot], source: enum{BOOTSTRAP, CASCADE_REFILL}` | **(New — closes the missing refill-placement gap.)** Once after Bootstrapping's combined pre-placed + RNG fill (`source = BOOTSTRAP`, § Detailed Rules 2, step 7); once per completed `Refilling` state, for every cascade step of every move or bootstrap-triggered cascade (`source = CASCADE_REFILL`, § Detailed Rules 9). Never fires with an empty `pieces` array (a `Refilling` state with nothing to fill would mean the prior `Falling` left no `EMPTY` cells, which is only possible if the step cleared zero cells — Clearing never runs with an empty clear set). |
+| `swap_started` | `piece_a: PieceSnapshot, piece_b: PieceSnapshot` | Instant the model swap executes, before validity is known (§ Detailed Rules 5) — each `PieceSnapshot` captures that piece's `color`/`special_type` immediately **before** the swap; `piece_a.cell`/`piece_b.cell` carry what were previously bare `cell_a`/`cell_b` |
+| `swap_rejected` | `cell_a, cell_b, reason: enum{NOT_ADJACENT, NO_MATCH_NO_ACTIVATION}` | The swap reverts — no piece was cleared, spawned, or placed, so bare cells (not `PieceSnapshot`) remain sufficient here | 
+| `swap_accepted` | `cell_a, cell_b, trigger_source: enum{SWAP_MATCH, SPECIAL_ACTIVATION}` | The swap is valid and a move is spent — piece identity for this move is already fully carried by the preceding `swap_started` |
+| `special_activated` | `piece_a: PieceSnapshot, piece_b: PieceSnapshot, cleared_pieces: Array[PieceSnapshot]` | Seam 1 returned `true` for this swap; fires immediately **before** the first `match_cleared` of that move. `piece_a`/`piece_b` mirror `swap_started`'s pre-swap snapshot; `cleared_pieces` replaces the former bare `cleared_cells` with full pre-clear identity for every cell seam 2 cleared |
+| `match_cleared` | `chain_index: int, cleared_pieces: Array[PieceSnapshot], run_data: Array[Run], trigger_source: enum` | Every completed Clearing state. `cleared_pieces` replaces the former bare `cleared_cells` — each entry is that cell's piece identity **immediately before** it cleared |
+| `special_spawned` | `cell: (int,int), special_type: int, color: int, source_run: Run` | Once per cell exempted and transformed by seam 3, during the same Clearing pass as the `match_cleared` it belongs to. `color` is the spawned piece's resolved color (§ Detailed Rules 3's `SpecialSpawn.color` — either the explicit override or, for a malformed/omitted response, the source run's own color) |
 | `cascade_step_advanced` | `chain_index: int` | Every time Matching (after a Refilling) finds ≥1 new run and the loop continues |
-| `cascade_ended` | `final_chain_index: int, total_cells_cleared: int, trigger_source: enum` | Matching finds zero runs and the move's cascade sequence is complete |
+| `cascade_ended` | `final_chain_index: int, total_cells_cleared: int, trigger_source: enum` | Matching finds zero runs and the move's cascade sequence is complete. `total_cells_cleared` remains an aggregate count, not a piece list — every individual piece already appeared in this move's `match_cleared` events |
 | `no_valid_moves_detected` | *(none)* | A stabilized board has zero legal moves, before Reshuffling begins |
-| `board_reshuffled` | `attempts_used: int` | Reshuffling succeeds |
+| `board_reshuffled` | `attempts_used: int` | Reshuffling succeeds. Reshuffle reassigns existing pieces' `(color, special_type)` across cells rather than clearing/spawning/placing new ones (§ Detailed Rules 11) — it is deliberately out of this revision's scope; see Open Questions |
 | `board_stabilized` | *(none)* | The full loop for one triggering event (swap, activation, or bootstrap) returns to `Idle` |
 
 **Ordering guarantee for a special-activation move**: `swap_started` →
 `swap_accepted` → `special_activated` → `match_cleared(chain_index=1,
-trigger_source=SPECIAL_ACTIVATION)` → … (normal cascade loop continues from
-`chain_index=2`) → `cascade_ended` → `board_stabilized`.
+trigger_source=SPECIAL_ACTIVATION)` → `pieces_spawned(source=CASCADE_REFILL)`
+→ … (normal cascade loop continues from `chain_index=2`) → `cascade_ended`
+→ `board_stabilized`.
+
+**Ordering guarantee for bootstrap**: `pieces_spawned(source=BOOTSTRAP)` →
+*(if step 8 finds an accidental match)* `match_cleared(chain_index=1,
+trigger_source=BOOTSTRAP)` → `pieces_spawned(source=CASCADE_REFILL)` → …
+(cascade loop, `trigger_source=BOOTSTRAP` throughout) → `cascade_ended` →
+*(if step 9 triggers a reshuffle)* `no_valid_moves_detected` →
+`board_reshuffled` → `board_bootstrapped` → `board_input_enabled_changed(true)`.
 
 ### 8. Board State Query API (Synchronous)
 
@@ -575,6 +689,71 @@ tempo feels right, without ever needing to ask Board Engine to "wait." Any
 perceived pacing in the finished game is 100% a Juice Layer decision. This
 directly implements the task's frame-budget strategy: **logic resolves
 instantly; presentation paces reveals.**
+
+**Payload sufficiency guarantee for deferred replay (resolves a BLOCKING
+finding from the 2026-07-18 design review).** Because every signal that
+reports a piece being cleared, spawned, or placed carries that piece's full
+identity inline as a `PieceSnapshot` (§ Detailed Rules 7) — never merely a
+bare cell coordinate requiring a live-board lookup to recover — any
+consumer that stores a move's full ordered signal stream and replays it
+**later**, at its own pace, after the live board has already progressed
+through further cascade steps or subsequent moves, can reconstruct **purely
+from the stored events**: (a) the exact visual state (`color`,
+`special_type`) of every cleared, spawned, or placed piece at the
+historical instant its event fired, and (b) any aggregate derived from that
+data (e.g., a per-color tally of tiles cleared), with **zero synchronous
+queries back into live board state**. This is what makes the deferred-
+replay model this section describes actually implementable for the
+`collect_color` objective (`level-objectives.md`) and for Juice Layer
+rendering beyond a move's first cascade step — both of which the
+pre-revision signal catalog structurally foreclosed. The worked walkthrough
+below demonstrates the guarantee end to end.
+
+**Worked walkthrough (2-step cascade, per-color tally derived only from
+events).** `color_pool = ["red","blue","green","yellow","purple"]`
+(indices 0–4). Column 4 of an in-progress board reads, top to bottom:
+`row0=blue(1), row1=red(0), row2=green(2), row3=red(0), row4=red(0)`. The
+player swaps `(1,4)` and `(2,4)` (red and green) — after the swap, column 4
+reads `row0=blue, row1=green, row2=red, row3=red, row4=red`: a new vertical
+run of three reds at rows 2–4.
+
+1. `swap_started(piece_a={cell:(1,4),color:2,special_type:0},
+   piece_b={cell:(2,4),color:0,special_type:0})` — the pre-swap snapshot.
+2. `swap_accepted(cell_a=(1,4), cell_b=(2,4), trigger_source=SWAP_MATCH)`.
+3. `match_cleared(chain_index=1, cleared_pieces=[
+   {cell:(2,4),color:0,special_type:0}, {cell:(3,4),color:0,special_type:0},
+   {cell:(4,4),color:0,special_type:0}], run_data=[{orientation:VERTICAL,
+   length:3, cells:[(2,4),(3,4),(4,4)], color:0}], trigger_source=SWAP_MATCH)`
+   — **3 red tiles**, entirely recoverable from this one event's own payload.
+4. Gravity compacts the two surviving pieces (blue, green) to the bottom of
+   the segment; rows 0–2 become `EMPTY` and refill. The (unfiltered, per §
+   Detailed Rules 10) draws happen to be red, red, red:
+   `pieces_spawned(pieces=[{cell:(0,4),color:0,special_type:0},
+   {cell:(1,4),color:0,special_type:0}, {cell:(2,4),color:0,special_type:0}],
+   source=CASCADE_REFILL)`.
+5. The next Matching pass finds a new vertical run at rows 0–2 (all red):
+   `cascade_step_advanced(chain_index=2)`, then `match_cleared(chain_index=2,
+   cleared_pieces=[{cell:(0,4),color:0,special_type:0},
+   {cell:(1,4),color:0,special_type:0}, {cell:(2,4),color:0,special_type:0}],
+   run_data=[{orientation:VERTICAL, length:3, cells:[(0,4),(1,4),(2,4)],
+   color:0}], trigger_source=SWAP_MATCH)` — **3 more red tiles**.
+6. Gravity/refill settles the column with no further match —
+   `pieces_spawned(..., source=CASCADE_REFILL)` for the three non-matching
+   replacement draws — Matching finds zero runs,
+   `cascade_ended(final_chain_index=2, total_cells_cleared=6,
+   trigger_source=SWAP_MATCH)`, `board_stabilized`.
+
+A consumer that stores this entire event sequence — whether it processes
+each event live or replays a stored copy later, after the board has already
+moved on to further cascade steps or subsequent moves — computes **"6 red
+tiles cleared this move"** by summing every `cleared_pieces` entry across
+both `match_cleared` events where `color == 0`, and renders both clears'
+exact sprites/positions from `cleared_pieces` and both fills' exact
+sprites/positions from the two `pieces_spawned` events — all without a
+single synchronous query back into live board state. This is the concrete
+mechanism behind `collect_color`'s runtime tally (`level-objectives.md`,
+forward dependency) and the Juice Layer's ability to correctly render any
+cascade step of a move, not only its first.
 
 ---
 
@@ -854,6 +1033,18 @@ cap during real play is not expected to ever occur and would indicate
 corrupted level data or an implementation bug, never intended design — see
 Edge Cases.
 
+**Sibling termination cap (seam 4).** `MAX_CASCADE_DEPTH` bounds the number
+of *across-step* cascade iterations (Matching → Clearing → Falling →
+Refilling, repeated). It has an independent, complementary sibling,
+`MAX_CHAIN_EXPANSION_ITERATIONS` (Tuning Knobs, default `10`), which bounds
+the number of *within-step* seam-4 (`expand_special_chain_reaction`) calls
+Board Engine issues while resolving one Clearing state to a fixpoint (§
+Detailed Rules 3, "Seam 4 calling semantics"). Both caps are pure iteration
+counters enforced unconditionally by Board Engine — together they guarantee
+the resolution loop always halts, regardless of how many cascade steps
+occur or how large a single step's special-chain expansion grows, even
+against an adversarial or buggy `special-candies.md` implementation.
+
 ---
 
 ### Formula 7 — Worst-Case RNG Draw Budget Per Move
@@ -899,7 +1090,9 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 | `swap_request` targets a `VOID` or `EMPTY` cell | Rejected (`swap_rejected`, `reason=NOT_ADJACENT` — structurally malformed input is treated the same as a non-adjacency failure, since neither should ever reach Board Engine from a correctly-behaving caller) | A `VOID`/`EMPTY` cell has no piece to swap; accepting this would corrupt grid state |
 | A swap's clear set includes an L or T intersection of a horizontal and vertical run | The two runs' cell sets are unioned into exactly one clear set; the shared cell is cleared exactly once; exactly one `match_cleared` fires for the step | Prevents double-counting a shared cell and keeps the per-step signal contract simple (one `match_cleared` per Clearing state, always) |
 | Seam 3 (`resolve_special_spawns`) returns a cell not in the current step's raw clear set | The returned entry is dropped and logged as a warning; Board Engine's own clear set is unaffected | A misbehaving or future-buggy Special Candies implementation can never corrupt Board Engine's grid-state integrity |
+| Seam 3's `SpecialSpawn.color` is present but is neither `null` nor a valid index into the level's `color_pool` (or the field is missing entirely) | Treated as malformed; Board Engine falls back to the exempted cell's originating run's `color` (the same result as a correctly-echoed colored special) and logs a warning | Same defensive-validation principle as the row above, applied to the new color-override field (§ Detailed Rules 3) — a misbehaving resolver can degrade to "colored, not colorless" but can never assign an out-of-range or otherwise invalid color |
 | Seam 4 (`expand_special_chain_reaction`) returns a cell that is `VOID` or already `EMPTY` | The returned cell is dropped and logged as a warning | Same defensive-validation principle as the row above |
+| Seam 4 does not reach a fixpoint (its returned set keeps growing) within `MAX_CHAIN_EXPANSION_ITERATIONS` (default 10) calls for one cascade step | Board Engine stops calling seam 4, uses the last-returned set as that step's finalized clear set, and logs an error-level diagnostic | Guarantees within-step termination against a pathological or buggy chain-expansion resolver, mirroring `MAX_CASCADE_DEPTH`'s force-stabilize pattern one level down (§ Detailed Rules 3, Formula 6); not expected to trigger during genuine play |
 | No seam consumer is registered at all (e.g., an isolated gdUnit4 test, or MVP before Special Candies ships) | All four seams behave per their documented MVP defaults (§ Detailed Rules 3) — Board Engine functions as a pure runs-only match-3 engine with zero specials | This is what makes Board Engine fully headless-testable and shippable in complete isolation from `special-candies.md` |
 | `pre_placed_pieces` coincidentally form a run at bootstrap | Not filtered or avoided (unlike RNG-filled cells); resolved via one automatic cascade pass at bootstrap, `trigger_source = BOOTSTRAP`, before the board reaches `Idle` — consumes zero player moves | Pre-placed pieces are trusted level-author intent, never silently altered by an avoidance algorithm; reusing the standard cascade pipeline requires no special-cased logic |
 | Bootstrap's retry-until-no-match loop exhausts `BOOTSTRAP_MAX_RETRIES_PER_CELL` for a cell | The last-drawn color is accepted unconditionally at that cell, even if it creates a match (resolved by the same bootstrap cascade pass, above) | Deterministic given a seed; expected to be reached only on a pathological `color_pool`/`cell_mask` combination Level Data Format's V7/V11 rules make vanishingly unlikely |
@@ -920,10 +1113,10 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 | RNG Service (`design/gdd/rng-service.md`, APPROVED) | Board Engine depends on it | Consumes the `board-refill` stream (stream_id 1) for bootstrap fill, cascade-step refill, and both reshuffle paths, in the fixed call order documented in § Detailed Rules 6. Calls `start_level_session(level_id=manifest_index, attempt_number)` at bootstrap, resolving `level_id` via the Level Manifest this document owns (Formula 1). |
 | Touch & Input System (`design/gdd/touch-input.md`, APPROVED) | Bidirectional | Board Engine depends on it for `select_cell`/`swap_request`/`cancel` intents (Board Engine ignores `select_cell`/`cancel`, since selection-state is entirely Touch & Input's own internal concern — only `swap_request` reaches this document). Touch & Input, in turn, depends on Board Engine for the `board_input_enabled` boolean it gates all gesture recognition against (`board_input_enabled_changed` signal, § Detailed Rules 7) and for `cell_size_px`, which Board Engine's rendering computes per level (Formula 4) and Touch & Input's own Formulas 1 and 3 consume as an external runtime input. **Recommended follow-up** (not made here, per this document's file-edit scope): `touch-input.md`'s Dependencies section should be updated to cite this document as the authoritative source of `cell_size_px`, rather than treating it as an opaque externally-supplied value. |
 | Level Data Format (`design/gdd/level-data-format.md`, APPROVED) | Board Engine depends on it | Reads exactly `grid_width`, `grid_height`, `cell_mask`, `pre_placed_pieces`, `color_pool` at bootstrap (§ Detailed Rules 2). Board Engine has no move-limit-driven behavior — move-limit enforcement is Level Objective & Move-Limit System's scope per `systems-index.md`. `level-data-format.md`'s Dependencies table now correctly reflects this (its Match-3 Board Engine row states "Does NOT read `move_limit`"), reconciling what was previously a flagged discrepancy. |
-| Special Candies & Combo Matrix (`design/gdd/special-candies.md`, not yet authored) | Will depend on Board Engine | Implements all four extension seams (§ Detailed Rules 3) and subscribes to `match_cleared`/`special_spawned`/`cascade_ended` for its own bookkeeping (e.g., harvested-ingredient tallies by color). Board Engine has zero dependency on it — every seam has a documented MVP no-op default. **Reciprocal note**: when authored, its Dependencies section must list this document and confirm its seam implementations against the signatures in § Detailed Rules 3. |
-| Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, not yet authored) | Will depend on Board Engine | Consumes `match_cleared` (`chain_index`, `cleared_cells`, `trigger_source`) and `cascade_ended` (`final_chain_index`) to compute point values — Board Engine emits the *count* and the *chain depth*, never a point value itself. **Reciprocal note**: when authored, its Dependencies section must list this document. |
-| Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, not yet authored) | Will depend on Board Engine | Consumes `swap_accepted` (a move was spent — the *only* move-related fact Board Engine reports) and `match_cleared`'s color/cell data (for `collect_color` objective tallies) — reads `move_limit` directly from Level Data Format, not through Board Engine. **Reciprocal note**: when authored, its Dependencies section must list this document. |
-| Juice Layer — VFX & Audio Hooks (`design/gdd/juice-layer.md`, not yet authored) | Will depend on Board Engine | Subscribes to the full signal catalog (§ Detailed Rules 7) to drive all presentation pacing (§ Detailed Rules 13). **Reciprocal note**: when authored, its Dependencies section must list this document. |
+| Special Candies & Combo Matrix (`design/gdd/special-candies.md`, not yet authored) | Will depend on Board Engine | Implements all four extension seams (§ Detailed Rules 3) and subscribes to `match_cleared`/`special_spawned`/`pieces_spawned`/`cascade_ended` for its own bookkeeping (e.g., harvested-ingredient tallies by color) — `match_cleared.cleared_pieces` and `special_spawned.color` (§ Detailed Rules 7, Revision 2) directly support per-color tallies without a re-query. Board Engine has zero dependency on it — every seam has a documented MVP no-op default. **Reciprocal note**: when authored, its Dependencies section must list this document and confirm its seam implementations against the signatures in § Detailed Rules 3. |
+| Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, not yet authored) | Will depend on Board Engine | Consumes `match_cleared` (`chain_index`, `cleared_pieces`, `trigger_source`) and `cascade_ended` (`final_chain_index`) to compute point values — Board Engine emits the *count/identity* and the *chain depth*, never a point value itself. **Reciprocal note**: when authored, its Dependencies section must list this document. |
+| Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, not yet authored) | Will depend on Board Engine | Consumes `swap_accepted` (a move was spent — the *only* move-related fact Board Engine reports) and `match_cleared.cleared_pieces`' per-piece `color` (for `collect_color` objective tallies, derivable purely from the event stream per § Detailed Rules 13's deferred-replay guarantee) — reads `move_limit` directly from Level Data Format, not through Board Engine. **Reciprocal note**: when authored, its Dependencies section must list this document. |
+| Juice Layer — VFX & Audio Hooks (`design/gdd/juice-layer.md`, not yet authored) | Will depend on Board Engine | Subscribes to the full signal catalog (§ Detailed Rules 7), including `pieces_spawned` for fall-in rendering, to drive all presentation pacing (§ Detailed Rules 13). **Reciprocal note**: when authored, its Dependencies section must list this document. |
 | Game UI/Screens Flow (`design/gdd/screen-flow.md`, not yet authored) | Will depend on Board Engine (soft) | Expected future supplier of `attempt_number` at level bootstrap, and co-owner (alongside Touch & Input) of external `board_input_enabled` gating during pause/results modals. For MVP, the Level Preview harness (`level-data-format.md` §5) fills this role. **Reciprocal note**: when authored, its Dependencies section must list this document. |
 | `design/art/art-bible.md` (not a `design/gdd/` system) | Board Engine depends on it (constants only) | Supplies `CANVAS_WIDTH_PX`/`CANVAS_HEIGHT_PX` (1080×1920) and the "top third of screen: HUD" layout rule consumed in Formula 4. |
 | `.claude/docs/technical-preferences.md` (not a `design/gdd/` system) | Board Engine depends on it (constants + rules only) | Supplies `MIN_TOUCH_TARGET_PX` (44px, Formula 4), the `≤100 draw calls` budget (Formula 5), the `16.6ms` frame budget (§ Detailed Rules 13, Formula 7), and the determinism/gdUnit4 testing rule this entire document is built to satisfy. |
@@ -935,6 +1128,7 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 | Parameter | Current Value | Safe Range | Effect of Increase | Effect of Decrease |
 |---|---|---|---|---|
 | `MAX_CASCADE_DEPTH` | 20 | 10 – 50 | More headroom above realistic play (Formula 6), but a pathological infinite-loop scenario (corrupted data/bug) costs proportionally more logic-frame time before the safety cap intervenes | Less headroom; a legitimately deep, exciting real chain (unlikely per Formula 6, but not impossible) risks being truncated mid-celebration, which would read as a bug to the player |
+| `MAX_CHAIN_EXPANSION_ITERATIONS` | 10 | 5 – 30 | More headroom for a single cascade step's seam-4 chain-expansion loop to reach a fixpoint (§ Detailed Rules 3) before force-stabilizing — negligible perf cost per extra iteration, since each is a single synchronous seam call | Fewer iterations risks truncating a legitimately deep single-step special-×-special chain (e.g., several bombs chained together within one clear set) before it fully resolves, which would read as a bug, not a safety net, to the player |
 | `RESHUFFLE_MAX_TRIES` | 60 (matches concept prototype) | 20 – 200 | More attempts to find a valid shuffle before falling back to full regeneration — negligible perf cost per attempt, marginal robustness gain | Fewer attempts increases how often the (more visually disruptive) full-regeneration fallback triggers on a difficult `color_pool`/`cell_mask` combination |
 | `BOOTSTRAP_MAX_RETRIES_PER_CELL` | 100 | 20 – 500 | More attempts to avoid a match-on-placement at level start; negligible perf cost (bootstrap runs once per level entry, not per frame) | Fewer attempts increases how often a level starts with an unavoidable pre-existing match (resolved automatically per § Detailed Rules 2 step 8, but a visibly "free" first cascade is a slightly worse first impression) |
 | `GRAVITY_MODE` | `stop_at_void` (fixed at MVP) | `{stop_at_void, fall_through_void}` | `fall_through_void` (not implemented) would let a candy above a void drop past it into a lower segment — flagged as a future "portal tile" design direction, not validated, not built | N/A — `stop_at_void` is the only implemented mode |
@@ -1039,13 +1233,73 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 - [ ] `test_seam_3_invalid_cell_response_dropped`: a mocked seam-3
       resolver returning a cell outside the current clear set is
       dropped and logged, with Board Engine's own clear set unaffected.
-- [ ] `test_seam_4_chain_expansion_applied_before_clearing`: a mocked
-      seam-4 resolver that adds extra cells results in those cells
-      being cleared in the same step's `match_cleared` payload.
+- [ ] `test_seam_3_color_override_null_produces_colorless_piece`: a mocked
+      seam-3 resolver returning `{special_type: BOMB, color: null}` for an
+      exempted cell results in a spawned piece with `color = COLOR_NONE
+      (-1)`, and that piece is confirmed excluded from run detection on a
+      subsequent Matching pass (§ Detailed Rules 4).
+- [ ] `test_seam_3_color_override_explicit_value_produces_colored_piece`:
+      a mocked seam-3 resolver returning `{special_type: STRIPE_H, color:
+      <valid color_pool index>}` results in a spawned piece with exactly
+      that `color`.
+- [ ] `test_seam_3_invalid_color_falls_back_to_run_color`: a mocked seam-3
+      resolver returning a `color` that is neither `null` nor a valid
+      `color_pool` index (or omits the field) results in the spawned
+      piece's `color` falling back to the exempted cell's originating
+      run's `color`, with a warning logged.
+- [ ] `test_seam_4_called_iteratively_to_fixpoint`: a mocked seam-4
+      resolver that adds extra cells across multiple successive calls (a
+      strict superset each time) results in Board Engine calling it
+      repeatedly — not once — until a call returns its input unchanged,
+      with every added cell present in the same step's `match_cleared`
+      payload, confirming the calling semantics in § Detailed Rules 3.
+- [ ] `test_seam_4_exceeds_iteration_cap_force_stabilizes`: a mocked
+      seam-4 resolver engineered to always grow its returned set (never
+      reaching a fixpoint) is force-stopped at exactly
+      `MAX_CHAIN_EXPANSION_ITERATIONS` calls, uses the last-returned set
+      as the step's finalized clear set, and logs an error-level
+      diagnostic, without hanging the resolution loop.
 - [ ] `test_special_spawned_fires_for_seam_3_exempted_cells`: a mocked
       seam-3 resolver exempting one cell from a run results in exactly
-      one `special_spawned` signal for that cell, and that cell is
-      absent from the same step's `match_cleared.cleared_cells`.
+      one `special_spawned` signal for that cell, carrying its resolved
+      `color` (per the `SpecialSpawn.color` tests above), and that cell is
+      absent from the same step's `match_cleared.cleared_pieces`.
+- [ ] `test_swap_anchor_cells_empty_for_cascade_steps_beyond_first`: a
+      mocked seam-3 resolver asserts `swap_anchor_cells` equals the
+      triggering swap's two cells at `chain_index = 1`, and equals the
+      empty set for every `chain_index ≥ 2` step of the same move (§
+      Detailed Rules 3).
+
+**Signal Payload Completeness (§ Detailed Rules 7, 13 — Revision 2)**
+
+- [ ] `test_swap_started_carries_piece_snapshots`: `swap_started`'s
+      `piece_a`/`piece_b` `PieceSnapshot`s match the board's actual
+      pre-swap `color`/`special_type` at each cell exactly.
+- [ ] `test_match_cleared_cleared_pieces_carries_full_identity`: every
+      entry in `match_cleared.cleared_pieces` matches that cell's actual
+      `color`/`special_type` immediately before it cleared, for a
+      multi-run, multi-color clear set in a single step.
+- [ ] `test_special_activated_carries_piece_snapshots`: `special_activated`'s
+      `piece_a`/`piece_b`/`cleared_pieces` follow the same identity
+      guarantees as `swap_started`/`match_cleared` for a seam-1/seam-2
+      triggered move.
+- [ ] `test_pieces_spawned_fires_once_for_bootstrap`: bootstrap emits
+      exactly one `pieces_spawned(source=BOOTSTRAP)` whose `pieces` array
+      covers every playable cell (pre-placed and RNG-filled combined),
+      each with the correct `color`/`special_type`, fired before step 8's
+      Matching pass.
+- [ ] `test_pieces_spawned_fires_per_refilling_state`: each completed
+      `Refilling` state (mid-move cascade or bootstrap's own automatic
+      cascade) emits exactly one `pieces_spawned(source=CASCADE_REFILL)`
+      whose `pieces` array covers exactly the cells filled during that
+      pass, no more and no fewer.
+- [ ] `test_deferred_replay_color_tally_matches_live_tally`: for a
+      synthetic multi-step cascade (modeled on the § Detailed Rules 13
+      worked walkthrough), a per-color tally computed by summing
+      `cleared_pieces` entries across a **stored and later-replayed** copy
+      of the full signal stream exactly matches a tally computed **live**
+      during synchronous emission — confirming the deferred-replay
+      guarantee holds with zero synchronous board queries.
 
 **Gravity & Column Segmentation (Formula 3)**
 
@@ -1178,3 +1432,4 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 | Does `level-data-format.md`'s Dependencies table need a follow-up correction removing `move_limit` from Board Engine's listed field consumption (§ Detailed Rules 2's flagged discrepancy)? | systems-designer | At next `level-data-format.md` review pass | **Resolved** — confirmed during this review (2026-07-18) that `level-data-format.md`'s Dependencies table already states Board Engine does not read `move_limit`; no further action needed. |
 | Should the Level Manifest (`level_manifest.tres`) formally become a step in `level-data-format.md`'s §5 Authoring Workflow, rather than living only in this document? | systems-designer / game-designer | Before the first non-MVP level batch is authored (Alpha content planning) | — |
 | Is Formula 6's `p_continue` heuristic worth replacing with an empirical measurement (instrumented cascade-depth histogram from real playtest sessions) once Vertical Slice levels exist, rather than relying on the analytical approximation? | systems-designer | At Vertical Slice, once real play data exists | — |
+| **v2 seam-extension sketch — spawn+clear composite combos** (review advisory, 2026-07-18): future combo types that must atomically spawn a special AND clear additional cells in the same step (e.g., a wrapped-candy double-blast, or bomb×stripe converting a full row into striped candies before detonating them) are not expressible through the current seam 2/3/4 signatures, which separate spawning from clearing. Sketch for v2 if needed: replace seam 3's return with a step-plan object `{spawns: Map[cell, SpecialSpawn], extra_clears: Set[cell], transforms: Map[cell, SpecialSpawn]}` applied atomically between Matching and Clearing — additive change, no event-stream redesign required since `pieces_spawned`/`match_cleared` payloads already carry full piece identity. Do not build until the Special Candies GDD demands a combo that needs it. | systems-designer (with Special Candies author) | At Special Candies & Combo Matrix design, if a composite combo is specced | — |
