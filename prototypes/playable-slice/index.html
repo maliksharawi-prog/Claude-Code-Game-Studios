@@ -7,7 +7,7 @@
   Implements (faithfully, simplified): board-engine.md (APPROVED), special-candies.md (Draft),
   level-data-format.md (APPROVED), touch-input.md (APPROVED), screen-flow.md (Draft),
   world-map.md (Draft), save-persistence.md (Draft), art-bible.md, characters-and-tone.md.
-  Scoring constants marked PROVISIONAL until scoring-stars.md / level-objectives.md finalize.
+  Scoring per scoring-stars.md (Draft) and win/move rules per level-objectives.md (Draft).
   Godot 4.6 remains the production target; this code is never refactored into production.
 -->
 <html lang="en">
@@ -225,25 +225,27 @@
 /* ========== CONFIG (level-data-format.md shapes; scoring values PROVISIONAL until scoring-stars.md) ========== */
 const COLORS = ['strawberry','citrus','lemon','apple','grape'];   // art-bible canonical five
 const SPECIAL = { NONE:0, STRIPE_H:1, STRIPE_V:2, BOMB:3 };       // special-candies.md vocabulary
-const SCORING = {                                                  // PROVISIONAL
-  PER_TILE: 20, CHAIN_LINEAR: true,
-  BONUS: { STRIPE_FIRE:60, BOMB_COLOR:300, BOMB_STRIPE:500, BOMB_BOMB:1000, STRIPE_STRIPE:150 },
+const SCORING = {                                                  // per scoring-stars.md (Draft)
+  PER_TILE: 20,                       // TILE_BASE_VALUE
+  PIECE_BONUS: { [1]:60, [2]:60, [3]:180 },   // per-piece activation bonus: stripes 60, bomb 180
   MAX_CASCADE_DEPTH: 20, MAX_CHAIN_EXPANSION_ITERATIONS: 10,
 };
 const mask8 = null; // full rectangle
 const maskCut = (n, cuts) => { const m=[]; for(let r=0;r<n;r++){m.push([]);for(let c=0;c<n;c++)m[r].push(!cuts.some(([cr,cc])=>cr===r&&cc===c));} return m; };
 const cutCorners8 = maskCut(8, [[0,0],[0,1],[1,0],[0,6],[0,7],[1,7],[6,0],[7,0],[7,1],[7,6],[6,7],[7,7]]);
-const LEVELS = [ // saw-tooth difficulty per game-concept; reference balance per level-data-format Formula A
-  { id:'ck-001', n:1,  size:8, mask:mask8,      pool:4, moves:20, objectives:[{t:'score',target:2000}],                        stars:[2000,2900,3800] },
-  { id:'ck-002', n:2,  size:8, mask:mask8,      pool:5, moves:22, objectives:[{t:'score',target:2200}],                        stars:[2200,3100,4000] },
-  { id:'ck-003', n:3,  size:8, mask:mask8,      pool:5, moves:20, objectives:[{t:'collect',color:0,count:40}],                 stars:[1800,2600,3400] },
-  { id:'ck-004', n:4,  size:7, mask:mask8,      pool:5, moves:20, objectives:[{t:'score',target:2400}],                        stars:[2400,3300,4200] },
-  { id:'ck-005', n:5,  size:8, mask:mask8,      pool:5, moves:18, objectives:[{t:'collect',color:4,count:30},{t:'score',target:1500}], stars:[1500,2300,3100] },
-  { id:'ck-006', n:6,  size:8, mask:mask8,      pool:4, moves:20, objectives:[{t:'score',target:2400}],                        stars:[2400,3400,4400] },
-  { id:'ck-007', n:7,  size:8, mask:cutCorners8,pool:5, moves:22, objectives:[{t:'collect',color:3,count:45}],                 stars:[1900,2700,3500] },
-  { id:'ck-008', n:8,  size:8, mask:mask8,      pool:5, moves:16, objectives:[{t:'score',target:2200}],                        stars:[2200,3000,3800] },
-  { id:'ck-009', n:9,  size:9, mask:mask8,      pool:5, moves:24, objectives:[{t:'collect',color:2,count:40},{t:'collect',color:1,count:40}], stars:[2000,3000,4000] },
-  { id:'ck-010', n:10, size:8, mask:mask8,      pool:5, moves:25, objectives:[{t:'score',target:4000}],                        stars:[4000,5200,6400] },
+// Star thresholds per scoring-stars.md framework: ref_max = moves × RSPM(K); stars = 0.625/0.80/0.975 × ref_max
+// RSPM: K=4 → 185, K=5 → 160 (heuristic ratios pending Vertical Slice calibration)
+const LEVELS = [ // saw-tooth difficulty per game-concept
+  { id:'ck-001', n:1,  size:8, mask:mask8,      pool:4, moves:20, objectives:[{t:'score',target:1800}],                        stars:[2300,2950,3600] },
+  { id:'ck-002', n:2,  size:8, mask:mask8,      pool:5, moves:22, objectives:[{t:'score',target:2000}],                        stars:[2200,2800,3450] },
+  { id:'ck-003', n:3,  size:8, mask:mask8,      pool:5, moves:20, objectives:[{t:'collect',color:0,count:40}],                 stars:[2000,2550,3100] },
+  { id:'ck-004', n:4,  size:7, mask:mask8,      pool:5, moves:20, objectives:[{t:'score',target:2000}],                        stars:[2000,2550,3100] },
+  { id:'ck-005', n:5,  size:8, mask:mask8,      pool:5, moves:18, objectives:[{t:'collect',color:4,count:30},{t:'score',target:1800}], stars:[1800,2300,2800] },
+  { id:'ck-006', n:6,  size:8, mask:mask8,      pool:4, moves:20, objectives:[{t:'score',target:2300}],                        stars:[2300,2950,3600] },
+  { id:'ck-007', n:7,  size:8, mask:cutCorners8,pool:5, moves:22, objectives:[{t:'collect',color:3,count:45}],                 stars:[2200,2800,3450] },
+  { id:'ck-008', n:8,  size:8, mask:mask8,      pool:5, moves:16, objectives:[{t:'score',target:1600}],                        stars:[1600,2050,2500] },
+  { id:'ck-009', n:9,  size:9, mask:mask8,      pool:5, moves:24, objectives:[{t:'collect',color:2,count:40},{t:'collect',color:1,count:40}], stars:[2400,3050,3750] },
+  { id:'ck-010', n:10, size:8, mask:mask8,      pool:5, moves:25, objectives:[{t:'score',target:3200}],                        stars:[2500,3200,3900] },
 ];
 
 /* ========== Fizz lines (characters-and-tone.md, final-quality pools) ========== */
@@ -297,7 +299,7 @@ const SFX={
 };
 
 /* ========== Board Engine (board-engine.md, simplified faithful port) ========== */
-const S={ level:null, grid:null, size:8, mask:null, pool:5, score:0, moves:0,
+const S={ level:null, grid:null, size:8, mask:null, pool:5, score:0, moves:0, stepBonus:0,
   objectives:[], busy:false, over:false, chainBest:0, screen:'map', retryOf:null };
 let tileSeq=1;
 const boardEl=document.getElementById('board');
@@ -370,6 +372,7 @@ function expandChain(set){ // seam 4, single pass; engine iterates to fixpoint
     else if(t.special===SPECIAL.STRIPE_V){ for(let rr=0;rr<S.size;rr++) if(occ(rr,t.c))add.push(key(rr,t.c)); }
     else if(t.special===SPECIAL.BOMB){ const col=mostCommonColor(); if(col>=0) forEachOccupied((x,r2,c2)=>{ if(x.special!==SPECIAL.BOMB&&x.color===col)add.push(key(r2,c2)); }); }
     else continue;
+    S.stepBonus+=SCORING.PIECE_BONUS[t.special]||0;   // per-piece activation bonus at consumption
     t.special=SPECIAL.NONE; // consumed (fixpoint bookkeeping)
   }
   let grew=false; for(const k of add) if(!set.has(k)){ set.add(k); grew=true; }
@@ -410,13 +413,15 @@ async function resolveCascades(startChain){
     chain++;
   }
 }
-function scoreClear(cleared,chain,bonus){
+function scoreClear(cleared,chain){
   let colored=0;
   for(const k of cleared){ const r=Math.floor(k/16),c=k%16; const t=occ(r,c); if(!t)continue;
     colored++;
     if(t.special!==SPECIAL.BOMB) tallyCollect(t.color,1);
   }
-  const pts=colored*SCORING.PER_TILE*chain + (bonus||0);
+  // scoring-stars.md: step_score = chain_index × (TILE_BASE_VALUE × pieces + Σ per-piece bonuses)
+  const pts=chain*(colored*SCORING.PER_TILE + S.stepBonus);
+  S.stepBonus=0;
   if(pts>0){ S.score+=pts; updateHud(); }
   return pts;
 }
@@ -511,9 +516,10 @@ async function trySwap(a,b){
     else if(kind==='BOMB_STRIPE'){ SFX.bomb(); showCallout('MEGA SWEEP!'); }
     else if(kind==='BOMB_COLOR'){ SFX.bomb(); }
     else SFX.stripe();
+    S.stepBonus+=(SCORING.PIECE_BONUS[a.special]||0)+(SCORING.PIECE_BONUS[b.special]||0);
     a.special=SPECIAL.NONE; b.special=SPECIAL.NONE;           // swap pieces consumed
     let it=0; while(expandChain(set)&&++it<SCORING.MAX_CHAIN_EXPANSION_ITERATIONS){}
-    scoreClear(set,1,SCORING.BONUS[kind]||0);
+    scoreClear(set,1);
     await clearAndFall(set,new Map(),1);
     await resolveCascades(2);
     await endOfMove(); return;
@@ -581,7 +587,7 @@ $('pre-play').addEventListener('click',()=>{ $('prelevel').classList.remove('sho
 function startLevel(i){
   const L=LEVELS[i]; S.level=i;
   S.size=L.size; S.mask=L.mask&&L.size===8?L.mask:null; S.pool=L.pool;
-  S.score=0; S.moves=L.moves; S.chainBest=0; S.over=false; S.busy=true; S.lastSwap=null;
+  S.score=0; S.moves=L.moves; S.chainBest=0; S.over=false; S.busy=true; S.lastSwap=null; S.stepBonus=0;
   S.objectives=L.objectives.map(o=>({...o,progress:0}));
   boardEl.innerHTML=''; tileSeq=1;
   S.grid=Array.from({length:S.size},()=>Array(S.size).fill(null));

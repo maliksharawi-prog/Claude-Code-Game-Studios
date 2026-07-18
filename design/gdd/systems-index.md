@@ -242,10 +242,10 @@ No other cycles detected.
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 15 (14 planned as GDDs in `design/gdd/`; 1 flagged non-GDD — Backend & Accounts Service) |
-| Design docs started | 4 — `rng-service.md`, `level-data-format.md`, `touch-input.md` (APPROVED), `board-engine.md` (drafting) |
-| Design docs reviewed | 3 (design-review lean, 2026-07-18 — logs in `design/gdd/reviews/`) |
-| Design docs approved | 3 — `rng-service.md`, `level-data-format.md`, `touch-input.md` |
-| MVP-priority systems designed | 3 / 10 (drafted, not yet reviewed) |
+| Design docs started | 11 — all Phase-MVP systems drafted (2026-07-18): rng-service, level-data-format, touch-input, board-engine, save-persistence, screen-flow, world-map, special-candies, scoring-stars, level-objectives, juice-layer |
+| Design docs reviewed | 4 (design-review lean — logs in `design/gdd/reviews/`; board-engine through full revise/re-review cycle) |
+| Design docs approved | 4 — `rng-service.md`, `level-data-format.md`, `touch-input.md`, `board-engine.md` |
+| MVP-priority systems designed | 10 / 10 drafted (4 approved; 6 awaiting review — run /review-all-gdds next) |
 | Vertical-Slice-priority systems designed | 0 / 1 |
 | Alpha-priority systems designed | 0 / 2 |
 | Full-Vision-priority systems designed | 0 / 2 |
