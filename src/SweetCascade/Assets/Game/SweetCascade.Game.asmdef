@@ -1,0 +1,16 @@
+{
+    "name": "SweetCascade.Game",
+    "rootNamespace": "SweetCascade.Game",
+    "references": [
+        "SweetCascade.Domain"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

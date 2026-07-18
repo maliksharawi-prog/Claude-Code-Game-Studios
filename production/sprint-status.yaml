@@ -22,28 +22,28 @@ stories:
     name: "Unity 6.3 project shell — URP Render Graph, portrait player settings, package manifest"
     file: "production/epics/project-scaffold-ci/story-001-unity-project-urp-render-graph.md"
     priority: must-have
-    status: ready-for-dev
+    status: in-progress
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: ""
+    blocker: "file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass for .meta/lock/URP-asset items"
     completed: ""
   - id: "E01-002"
     name: "Five assembly definitions + one-way dependency direction + Domain noEngineReferences (L1)"
     file: "production/epics/project-scaffold-ci/story-002-assembly-definitions-domain-purity.md"
     priority: must-have
-    status: ready-for-dev
+    status: in-progress
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: ""
+    blocker: "file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass for .meta/lock/URP-asset items"
     completed: ""
   - id: "E01-003"
     name: "Domain-purity CI denylist scan (L2) + injected-violation self-test"
     file: "production/epics/project-scaffold-ci/story-003-domain-purity-ci-denylist-scan.md"
     priority: must-have
-    status: ready-for-dev
+    status: in-progress
     owner: "unity-specialist"
     estimate_days: 1.5
-    blocker: ""
+    blocker: "file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass for .meta/lock/URP-asset items"
     completed: ""
   - id: "E01-004"
     name: "game-ci test-runner gate activation — guard removal, license documented, first green run"
@@ -67,10 +67,10 @@ stories:
     name: "Editor tooling folder layout + manifest-generator stub placement (off critical path)"
     file: "production/epics/project-scaffold-ci/story-006-editor-tooling-manifest-stub.md"
     priority: must-have
-    status: ready-for-dev
+    status: in-progress
     owner: "unity-specialist"
     estimate_days: 1
-    blocker: ""
+    blocker: "file-based scaffold complete + verified 2026-07-18; awaiting human Unity editor pass for .meta/lock/URP-asset items"
     completed: ""
 
   # ── Should Have — E02 domain-foundation (RNG track 001–004 + LevelData POCO 005) — sprint-1 stretch ──

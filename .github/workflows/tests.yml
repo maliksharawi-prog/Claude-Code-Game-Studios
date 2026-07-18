@@ -7,9 +7,39 @@ on:
     branches: [main]
 
 jobs:
+  # Domain-purity CI guard — L2 (ADR-004 §6 / story E01-003). Pure ripgrep,
+  # needs NO Unity license, so it runs first and fails fast if a forbidden
+  # token (System.Random, UnityEngine/UnityEditor, DateTime.Now, etc.) lands
+  # in src/SweetCascade/Assets/Domain/. The `test` job below depends on this
+  # one, so a purity failure blocks the PR/push before any Unity spin-up.
+  domain-purity:
+    name: Domain Purity Scan (L2)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      # Proves the guard itself is armed (injects a known violation into a
+      # disposable temp copy, asserts non-zero, then asserts a clean re-scan)
+      # before trusting the real scan below — a vacuously-passing scan of an
+      # empty/near-empty Assets/Domain/ tree would otherwise prove nothing.
+      - name: Self-test the domain-purity guard
+        shell: bash
+        run: tools/ci/domain-purity-scan.sh --self-test
+
+      - name: Scan src/SweetCascade/Assets/Domain/ for forbidden tokens
+        shell: bash
+        run: tools/ci/domain-purity-scan.sh
+
   test:
     name: Run Unity Tests
     runs-on: ubuntu-latest
+    needs: domain-purity
 
     steps:
       - name: Checkout

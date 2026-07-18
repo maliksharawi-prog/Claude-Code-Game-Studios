@@ -1,0 +1,19 @@
+{
+    "name": "SweetCascade.Editor",
+    "rootNamespace": "SweetCascade.Editor",
+    "references": [
+        "SweetCascade.Game",
+        "SweetCascade.Domain"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
