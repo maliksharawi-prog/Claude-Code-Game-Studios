@@ -13,10 +13,11 @@ decorative lie, per `art-bible.md`'s Pillar 2 Compliance Note)*
 *Depends On: Level Data Format (`design/gdd/level-data-format.md`, APPROVED),
 Save & Persistence (`design/gdd/save-persistence.md`, Draft), Touch & Input
 System (`design/gdd/touch-input.md`, APPROVED), Match-3 Board Engine
-(`design/gdd/board-engine.md`, Drafting), Level Objective & Move-Limit System
-(#7, not yet authored — forward seam), Scoring & Star Thresholds (#6, not yet
-authored — forward seam), Level Progression / World Map (#11, not yet
-authored — forward seam)*
+(`design/gdd/board-engine.md`, APPROVED), Juice Layer — VFX & Audio Hooks
+(`design/gdd/juice-layer.md`, Draft — mutual, supplies the `juice_input_lock`
+term composed into Formula 5), Level Objective & Move-Limit System (#7,
+Draft — forward seam), Scoring & Star Thresholds (#6, Draft — forward seam),
+Level Progression / World Map (#11, Draft — forward seam)*
 *Depended On By: Booster Brewing Meta (Phase 2, gated), Events/Theming Engine
 (Phase 3), Social Layer (Phase 3) — per `design/gdd/systems-index.md`*
 *Source: `design/gdd/game-concept.md` · `design/gdd/systems-index.md` ·
@@ -263,14 +264,23 @@ in `touch-input.md` §Dependencies and `board-engine.md` §Dependencies.
   other screen — there is no board grid to hit-test against on World Map,
   Pre-Level Card, Pause, Settings, or either Results screen, so input scope
   is confined by construction, not by a runtime flag alone.
-- **`board_input_enabled` co-ownership.** Board Engine owns and emits its
-  own internal busy-state signal (`board_input_enabled` in its own
-  vocabulary — true only when idle between cascade/gravity/refill steps).
-  Screen Flow owns a second, independent signal: `overlay_is_active`, true
-  whenever `PAUSE` or `SETTINGS` is open on top of `GAMEPLAY`. The value
-  Touch & Input's own Rule 4 actually gates on is the logical composition of
-  both (Formula 5) — Screen Flow never overwrites Board Engine's internal
-  signal, it composes an independent veto on top of it.
+- **`board_input_enabled` co-ownership — now a three-way composition.**
+  Board Engine owns and emits its own internal busy-state signal
+  (`board_input_enabled` in its own vocabulary — true only when idle between
+  cascade/gravity/refill steps). Screen Flow owns a second, independent
+  signal: `overlay_is_active`, true whenever `PAUSE` or `SETTINGS` is open on
+  top of `GAMEPLAY`. Juice Layer owns a third, independent signal:
+  `juice_input_lock` (`juice-layer.md` §10) — true for the full duration of
+  its Reveal Queue replay, which outlives Board Engine's own busy window
+  (Board Engine reports idle the instant its synchronous resolution loop
+  finishes, well before the Juice Layer has replayed a single visible frame
+  of that move). The value Touch & Input's own Rule 4 actually gates on is
+  the logical composition of all three (Formula 5) — Screen Flow never
+  overwrites Board Engine's internal signal, and Juice Layer's veto is
+  composed on top of both rather than requiring Board Engine or Touch & Input
+  to know Juice Layer exists. This closes the loop `juice-layer.md` §10
+  proposed as a "recommended follow-up, not made there" — the follow-up is
+  made here, in this revision.
 - **`attempt_number` supply.** Screen Flow owns a single in-memory counter
   per level, reset to `1` on every fresh entry from the map or from a
   results screen's "Next Level" (T4, T18), and incremented by exactly `1`
