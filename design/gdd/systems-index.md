@@ -242,10 +242,10 @@ No other cycles detected.
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 15 (14 planned as GDDs in `design/gdd/`; 1 flagged non-GDD — Backend & Accounts Service) |
-| Design docs started | 0 |
+| Design docs started | 3 — `rng-service.md`, `level-data-format.md`, `touch-input.md` (Drafts, 2026-07-18; awaiting /design-review) |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
-| MVP-priority systems designed | 0 / 10 |
+| MVP-priority systems designed | 3 / 10 (drafted, not yet reviewed) |
 | Vertical-Slice-priority systems designed | 0 / 1 |
 | Alpha-priority systems designed | 0 / 2 |
 | Full-Vision-priority systems designed | 0 / 2 |
