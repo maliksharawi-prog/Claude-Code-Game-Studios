@@ -837,10 +837,10 @@ seed the handoff's watch-list.
 
 | ID | Question | Priority | Resolution path |
 |---|---|---|---|
-| QQ-01 | The `BoardEvent` catalog in the blueprint covers only a subset of board-engine.md §7 — the remaining records must be added before the Board Engine slice is end-to-end testable. | High | ADR-D + Board Engine implementation |
-| QQ-02 | Save JSON writer: `System.Text.Json` vs Newtonsoft vs hand-rolled canonical writer (Unity `JsonUtility` cannot serialize the `Dictionary` profile). | High | ADR-B |
-| QQ-03 | Addressables grouping + the iOS/Android/WebGL `persistentDataPath` durability (fsync) guarantee the save GDD's atomic A/B ladder assumes. | High | ADR-A + ADR-B |
-| QQ-04 | Replace `System.Random` (blueprint placeholder) with a platform-stable SplitMix32-style generator — required for cross-platform determinism (Pillar 2). | High | ADR-C |
+| QQ-01 | ~~BoardEvent catalog incomplete~~ **RESOLVED 2026-07-18**: ADR-005 defines the full 17-record catalog (14 board-engine §7 signals + 3 feature events). | High | ✅ ADR-005 |
+| QQ-02 | ~~Save JSON writer choice~~ **RESOLVED 2026-07-18**: ADR-003 — hand-rolled canonical codec in Domain; Newtonsoft read-path fallback only. | High | ✅ ADR-003 |
+| QQ-03 | ~~Addressables grouping + save durability~~ **RESOLVED 2026-07-18**: ADR-002 (7-group layout) + ADR-003 (Flush(true)+read-back-verify; WebGL ISaveStore path). On-device fsync behavior stays under Verification Required in ADR-003. | High | ✅ ADR-002/003 |
+| QQ-04 | ~~System.Random instability~~ **RESOLVED 2026-07-18**: ADR-004 — SplitMix32 + fmix32 bit-exact spec, golden vectors, three-layer purity guard. | High | ✅ ADR-004 |
 | QQ-05 | The ≤100 draw-call accounting (§9) is a design-time estimate; it must be re-profiled on 2022-era mid-range Android at the Vertical Slice feel checkpoint. | Medium | Vertical Slice perf pass (performance-analyst) |
 | QQ-06 | Score popups / cascade callouts: world-space TextMeshPro vs UI Toolkit, plus USS-strict + `AccessibilityRole` standard-enum compliance. | Medium | ADR-F + `/ux-design` |
 | QQ-07 | Audio: Unity native `AudioSource`/`AudioMixer` (runtime pitch-shift) vs FMOD/Wwise. | Medium | ADR-G |
@@ -850,6 +850,6 @@ seed the handoff's watch-list.
 
 ---
 
-*End of master architecture v1.0 (Draft). Next: run the Required ADRs (§11) — Foundation
-first (ADR-A/B/C/D/E) — then `/architecture-review`, `/test-setup`, `/ux-design`, and
-`/gate-check pre-production`.*
+*End of master architecture v1.0 — Accepted (Foundation ADRs 002–006 written and Accepted;
+`/architecture-review` CONCERNS resolved on disk 2026-07-18; TD conditions discharged).
+Remaining ADRs F–J are Feature/Presentation-tier, scheduled with their epics (E07/E09+).*
