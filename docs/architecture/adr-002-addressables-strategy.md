@@ -161,7 +161,7 @@ choke point** and a **region-scoped resident set**.
 
 | # | Group | Label | Contents | Delivery (MVP) | Lifecycle |
 |---|-------|-------|----------|----------------|-----------|
-| 1 | `Core_Bootstrap` | `core` | `level_manifest.asset` (LevelManifest SO), `world_map_manifest.asset` (WorldMapManifest SO), core UI Toolkit assets (HUD, overlay shells, Results/Pre-Level Card UXML+USS), core/shared SFX bank (`audio_pop_base`, UI clicks) | Local | Load once at **boot**, **pin for session**, release on quit |
+| 1 | `Core_Bootstrap` | `core` | Core UI Toolkit assets (HUD, overlay shells, Results/Pre-Level Card UXML+USS), core/shared SFX bank (`audio_pop_base`, UI clicks). *The two manifest SOs (`level_manifest.asset`, `world_map_manifest.asset`) are NOT in this group — they load by direct serialized reference on the BootLoader per ADR-006, per the engine reference rule against Addressables for boot-critical assets (amended 2026-07-18, architecture-review conflict #1).* | Local | Load once at **boot**, **pin for session**, release on quit |
 | 2 | `Shared_BoardRig` | `board-rig` | 5 shared fruit meshes, the 13-material glass-candy set, the single candy/particle **atlas** texture, the pooled `FruitPiece` prefab, well meshes, blob-shadow decal | Local | Load once at **boot**, **pin for session**, release on quit |
 | 3 | `Region_Theme_<region_code>` (one per region) | `region-theme:<code>` | Art-owned Region Theme Resource: background gradient triplet, UI trim/accent color, decorative prop set (2–4 silhouettes), ambient particle theme, `map_diorama` vignette — the **Pillar 3 reskin payload** (`world-map.md` §4) | Local | Load on **region-enter**, release on **region-change** (only active region resident) |
 | 4 | `Levels_<region_code>` (one per region) | `level-data:<code>` (each `LevelData` addressed by its `level_id`) | The per-region folder `assets/data/levels/<region_code>/*.asset` of `LevelData` SOs | Local | **Batch-load** the whole region's set on **region-enter**, release on **region-change** |
@@ -313,7 +313,7 @@ Toolkit runtime.
 | Resident item | Est. footprint (target Android, compressed) | Notes |
 |---|---|---|
 | `Shared_BoardRig` | ~30–50 MB | 5 low-poly meshes + 13 materials + 1 ASTC candy/particle atlas + pooled prefabs (§9.4: "trivially inside 400MB") |
-| `Core_Bootstrap` | ~10–20 MB | UI Toolkit assets + core SFX + two tiny manifest SOs |
+| `Core_Bootstrap` | ~10–20 MB | UI Toolkit assets + core SFX (manifest SOs are direct references, not addressable — ADR-006) |
 | One `Region_Theme` | ~10–20 MB | props, diorama vignette, particle textures |
 | One `Audio_Region` | ~5–15 MB | compressed music/ambient |
 | One `Levels_<code>` batch | < 1 MB | ~30 data-only SOs |
@@ -332,7 +332,7 @@ W-rules gate philosophy). Checks:
 |---|---|---|
 | A1 | Every `LevelData` SO under `assets/data/levels/<region_code>/` is marked Addressable and lives in its region's `Levels_<region_code>` group. | Blocking |
 | A2 | **address == `level_id` invariant** — each `LevelData`'s Addressables address equals its `level_id` field, so Board Engine resolves `level_id → LevelData` by address with no lookup table. | Blocking |
-| A3 | **Manifest ↔ catalog cross-check** — every `level_id` in `level_manifest.asset` has an addressable entry (extends `world-map.md` W6/W7 into the catalog); every region in `world_map_manifest.asset` has a `Region_Theme_<code>` **and** an `Audio_Region_<code>` group. | Blocking |
+| A3 | **Manifest ↔ catalog cross-check** — every **non-retired** `level_id` in `level_manifest.asset` has an addressable entry (extends `world-map.md` W6/W7 into the catalog; entries listed in ADR-006's `retired_ordinals` are exempt — tombstoned ids keep their ordinal but have no asset); every region in `world_map_manifest.asset` has a `Region_Theme_<code>` **and** an `Audio_Region_<code>` group. *(Scoped 2026-07-18, architecture-review conflict #2.)* | Blocking |
 | A4 | **Label/grouping integrity** — each group carries exactly its designated label; no asset is in two groups; no orphaned addressable (marked addressable but in no known group). | Blocking |
 | A5 | **Local-only MVP policy** — no group has a Remote build/load path at MVP; `Remote_Events` is empty. Prevents shipping an accidental remote dependency in the MVP binary. | Blocking |
 | A6 | **Duplicate-dependency analyzer** — run Addressables' built-in "Check Duplicate Bundle Dependencies" rule; a shared asset (e.g., a candy material) duplicated into a region bundle instead of staying in `Shared_BoardRig` fails. | Blocking |

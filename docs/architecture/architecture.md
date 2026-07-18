@@ -8,7 +8,13 @@
 ## Document Status
 
 - **Version:** 1.0
-- **Status:** Draft — awaiting founder / Technical Director review
+- **Status:** Reviewed — **CONCERNS** (`/architecture-review` 2026-07-18). Traceability: 42 TRs,
+  40 covered, 2 Presentation-tier partials (pending ADR-G/ADR-H), 0 uncovered gaps. All five
+  Foundation ADRs (A–E = ADR-002…006) Accepted; dependency graph acyclic; engine-consistent. One
+  cross-ADR conflict to reconcile before the BootLoader slice: **ADR-002 (manifests in the
+  Core Addressables group) vs ADR-006 (manifests loaded by direct reference)** — engine reference
+  favors ADR-006; amend ADR-002. Still awaiting founder sign-off.
+  See `docs/architecture/architecture-review-2026-07-18.md`.
 - **Last Updated:** 2026-07-18
 - **Engine:** Unity 6.3 LTS (6000.3.x) · C# · URP (Render Graph path only) — per ADR-001
 - **GDDs Covered (11, all APPROVED 2026-07-18):** rng-service · level-data-format ·
@@ -335,7 +341,7 @@ by others) · **Consumes** (reads/calls elsewhere) · **Engine APIs** (with risk
 
 | Module (asm) | Owns | Exposes | Consumes | Engine APIs |
 |---|---|---|---|---|
-| **BoardModel** (Domain) | Grid truth, swap execution, match detection, gravity/refill, cascade loop, reshuffle, `chain_index`, event emission | `TrySwap`, `At`, `GetCellState`, `HasAvailableMove`, `Events`, query API | RngService (`board-refill`), SpecialResolver/ScoreKeeper (via seams) | none |
+| **BoardModel** (Domain) | Grid truth, swap execution, match detection, gravity/refill, cascade loop, reshuffle, `chain_index`, event emission | `TrySwap`, `At`, `GetCellState`, `HasAvailableMove`, `Events`, query API | RngService (`board-refill`), SpecialResolver (via seams); ScoreKeeper decoupled — consumes events via IBoardEventSink (ADR-005 D2) | none |
 | **InputRouter** (Game) | Gesture state machine (Idle/AwaitingSecond); swipe threshold; dominant-axis | Emits `SelectCell`/`SwapRequest`/`Cancel` C# events | `effective_board_input_enabled` gate; grid dims/`cell_size_px` | Input System `EnhancedTouch`/`Pointer`/`Mouse` (HIGH); no legacy `Input` |
 
 ### Feature Layer (logic in Domain; presenters in Game/UI)
@@ -519,8 +525,9 @@ public interface ISpecialResolver
     bool IsActivationSwap(Piece a, Piece b);                                   // MVP default: false
 
     // Seam 2 — only when Seam 1 returned true. Returns the seed clear set;
-    // consumes the two swap pieces (credits their bonuses to ScoreKeeper).
-    HashSet<Cell> ActivationClears(BoardModel board, Cell a, Cell b, ScoreKeeper score);
+    // consumes the two swap pieces (bonuses are priced downstream by ScoreKeeper
+    // from MatchCleared.ClearedPieces — no ScoreKeeper threading, per ADR-005 D2).
+    HashSet<Cell> ActivationClears(BoardModel board, Cell a, Cell b);
 
     // Seam 3 — every cascade step, after Matching, before Clearing finalizes.
     // color:null => colorless special (Board assigns COLOR_NONE=-1).
@@ -529,7 +536,7 @@ public interface ISpecialResolver
 
     // Seam 4 — ONE single-pass expansion; BoardModel iterates to fixpoint or
     // MAX_CHAIN_EXPANSION_ITERATIONS. Never recurses internally.
-    bool ExpandChain(BoardModel board, HashSet<Cell> clearedSet, ScoreKeeper score); // default: false
+    bool ExpandChain(BoardModel board, HashSet<Cell> clearedSet); // default: false (ADR-005 D2: no ScoreKeeper param)
 }
 public readonly record struct SpecialSpawn(SpecialType Special, int? Color);
 ```
@@ -556,7 +563,7 @@ public sealed record MatchCleared(int ChainIndex, PieceSnapshot[] ClearedPieces,
 public sealed class BoardModel   // synchronous, headless, deterministic
 {
     public IReadOnlyList<BoardEvent> Events { get; }        // drained per move by EventBridge
-    public bool TrySwap(Cell a, Cell b, ISpecialResolver s, ScoreKeeper k);  // false => rejected
+    public bool TrySwap(Cell a, Cell b, ISpecialResolver s);  // false => rejected (scoring via IBoardEventSink, ADR-005)
     public Piece? At(Cell c);
     public CellState GetCellState(int r, int c);            // Void|Empty|Occupied
     public bool HasAvailableMove(ISpecialResolver s);

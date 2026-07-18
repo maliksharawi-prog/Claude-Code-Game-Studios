@@ -24,33 +24,378 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 1
-last_updated: ""
+version: 2
+last_updated: 2026-07-18
 
-requirements: []
+# First real population: extracted from the master architecture §3 Technical
+# Requirements Baseline (which is itself the canonical extraction of the 11
+# APPROVED MVP GDDs) and cross-checked in /architecture-review 2026-07-18.
+# IDs mirror the identifiers already referenced by ADR-002..006 — DO NOT renumber.
+#
+# Coverage note key (informational only; not part of the stable contract):
+#   ADR = an Accepted ADR governs implementation.
+#   arch§ = a master-architecture decision (docs/architecture/architecture.md) is
+#           the architectural home and no dedicated ADR was scheduled.
+#   pending = architectural home exists; concrete tech choice awaits a deferred ADR.
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+requirements:
+
+  # ── RNG Service (design/gdd/rng-service.md) ──────────────────────────────
+  - id: TR-rng-001
+    system: rng-service
+    gdd: design/gdd/rng-service.md
+    requirement: "Named, independently-seeded streams; isolation guarantee (a draw on stream A never perturbs stream B)"
+    coverage: ADR-004
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-rng-002
+    system: rng-service
+    gdd: design/gdd/rng-service.md
+    requirement: "Platform-stable seed derivation (F1-F3 + mix32 avalanche) — byte-identical across iOS/Android/Web; not System.Random"
+    coverage: ADR-004
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-rng-003
+    system: rng-service
+    gdd: design/gdd/rng-service.md
+    requirement: "next_float/int/color/shuffle, fork_stream, and get_session_log API surface (rng-service.md §6)"
+    coverage: ADR-004
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-rng-004
+    system: rng-service
+    gdd: design/gdd/rng-service.md
+    requirement: "level_id supplied as a resolved int ordinal (never a runtime string-hash)"
+    coverage: ADR-004 + ADR-006
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Level Data Format (design/gdd/level-data-format.md) ──────────────────
+  - id: TR-ldf-001
+    system: level-data-format
+    gdd: design/gdd/level-data-format.md
+    requirement: "Per-level data as a versioned schema (schema_version, closed enums, migration policy)"
+    coverage: "arch§6 (LevelData Domain POCO)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ldf-002
+    system: level-data-format
+    gdd: design/gdd/level-data-format.md
+    requirement: "Designer Inspector-editable, one file per level, region subdirectories"
+    coverage: ADR-002 + arch§6
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ldf-003
+    system: level-data-format
+    gdd: design/gdd/level-data-format.md
+    requirement: "V1-V19 validation suite (blocking + advisory); connectivity flood-fill (V8)"
+    coverage: "arch§6 (Validate()) + ADR-006 (W8)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ldf-004
+    system: level-data-format
+    gdd: design/gdd/level-data-format.md
+    requirement: "Additive display_name field (v1.1, no schema bump) per the adoption ledger"
+    coverage: "arch§6 / GDD schema"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Match-3 Board Engine (design/gdd/board-engine.md) ────────────────────
+  - id: TR-be-001
+    system: board-engine
+    gdd: design/gdd/board-engine.md
+    requirement: "Headless, synchronous, fully-deterministic resolution state machine (zero await/timer)"
+    coverage: "ADR-005 (MoveResolver) + arch§7.1"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-be-002
+    system: board-engine
+    gdd: design/gdd/board-engine.md
+    requirement: "Four extension seams (activation-check / activation-clears / special-spawns / chain-expansion) with no-op MVP defaults"
+    coverage: "arch§8.1 (ISpecialResolver)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-be-003
+    system: board-engine
+    gdd: design/gdd/board-engine.md
+    requirement: "Full event catalog with PieceSnapshot identity for deferred replay; board_input_enabled_changed"
+    coverage: ADR-005
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-be-004
+    system: board-engine
+    gdd: design/gdd/board-engine.md
+    requirement: "Level Manifest (String->append-only ordinal) resolution; termination caps (MAX_CASCADE_DEPTH, MAX_CHAIN_EXPANSION_ITERATIONS)"
+    coverage: "ADR-006 + arch§6 (caps)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-be-005
+    system: board-engine
+    gdd: design/gdd/board-engine.md
+    requirement: "Segment-scoped gravity/refill; retry-on-bootstrap vs plain-uniform-cascade asymmetry; reshuffle"
+    coverage: "arch§7 / board-engine GDD"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Special Candies & Combo Matrix (design/gdd/special-candies.md) ───────
+  - id: TR-sc-001
+    system: special-candies
+    gdd: design/gdd/special-candies.md
+    requirement: "Combo matrix (Formulas 4-7) + passive detonation (deterministic most-common-color, F8) via the 4 seams, zero Board Engine change"
+    coverage: "arch§8.1 seam contract"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sc-002
+    system: special-candies
+    gdd: design/gdd/special-candies.md
+    requirement: "Append-only special_type vocabulary; WRAPPED=4 reserved"
+    coverage: "ADR-005 (SpecialType enum)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sc-003
+    system: special-candies
+    gdd: design/gdd/special-candies.md
+    requirement: "Harvest Observation Point (per-color identity preserved on every clear path)"
+    coverage: "ADR-005 (PieceSnapshot)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Scoring & Star Thresholds (design/gdd/scoring-stars.md) ──────────────
+  - id: TR-ss-001
+    system: scoring-stars
+    gdd: design/gdd/scoring-stars.md
+    requirement: "step_score from match_cleared only; unified per-piece activation bonus; linear chain multiplier"
+    coverage: "ADR-005 (D3 ScoreKeeper)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ss-002
+    system: scoring-stars
+    gdd: design/gdd/scoring-stars.md
+    requirement: "long score accumulator (64-bit); REFERENCE_SCORE_PER_MOVE(K) table"
+    coverage: "ADR-005 (long) + arch§2"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ss-003
+    system: scoring-stars
+    gdd: design/gdd/scoring-stars.md
+    requirement: "Pull API: get_current_score(), get_score_results() -> ScoreResults"
+    coverage: "arch§8.3 + ADR-005"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Level Objective & Move-Limit (design/gdd/level-objectives.md) ────────
+  - id: TR-lo-001
+    system: level-objectives
+    gdd: design/gdd/level-objectives.md
+    requirement: "Objective tracker registry (score_target, collect_color), field normalization, extensible handler map"
+    coverage: "arch§6 (ObjectiveEvaluator)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-lo-002
+    system: level-objectives
+    gdd: design/gdd/level-objectives.md
+    requirement: "Win/lose evaluated only at board_stabilized; last-move-cascade win"
+    coverage: "ADR-005 (D3/D4)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-lo-003
+    system: level-objectives
+    gdd: design/gdd/level-objectives.md
+    requirement: "Assembles ResultsData; fires level_resolved; calls record_level_completion() on WIN before the event"
+    coverage: "ADR-005 (D4)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-lo-004
+    system: level-objectives
+    gdd: design/gdd/level-objectives.md
+    requirement: "Move accounting on swap_accepted; moves_remaining_changed, objective_progressed"
+    coverage: "ADR-005 (D3)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Touch & Input System (design/gdd/touch-input.md) ─────────────────────
+  - id: TR-ti-001
+    system: touch-input
+    gdd: design/gdd/touch-input.md
+    requirement: "Gesture -> intent (select_cell / swap_request / cancel); swipe threshold + dominant-axis"
+    coverage: "arch§6 (InputRouter)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ti-002
+    system: touch-input
+    gdd: design/gdd/touch-input.md
+    requirement: "Unified touch+mouse pointer; hover additive-only; single-active-touch"
+    coverage: "arch§6"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-ti-003
+    system: touch-input
+    gdd: design/gdd/touch-input.md
+    requirement: "Reads composed effective_board_input_enabled gate; <=1 frame latency; >=44px hit target"
+    coverage: "ADR-005 (D5) + arch§8.5"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Juice Layer (design/gdd/juice-layer.md) ──────────────────────────────
+  - id: TR-jl-001
+    system: juice-layer
+    gdd: design/gdd/juice-layer.md
+    requirement: "Capture-then-replay: Shadow Board Model + Reveal Queue, single active queue"
+    coverage: "ADR-005 (D1/D3 Mode B)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-jl-002
+    system: juice-layer
+    gdd: design/gdd/juice-layer.md
+    requirement: "Owns juice_input_lock_changed; gravity re-derivation from events; one live-query reshuffle exception"
+    coverage: "ADR-005 (D5 term 4)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-jl-003
+    system: juice-layer
+    gdd: design/gdd/juice-layer.md
+    requirement: "Audio hook map (runtime pitch-shift), haptics map, reduced-motion + WCAG 3Hz flash-safety"
+    coverage: "arch§6 (JuiceDirector/AudioDirector); concrete audio tech pending ADR-G"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-jl-004
+    system: juice-layer
+    gdd: design/gdd/juice-layer.md
+    requirement: "VFX sub-budget (JUICE_VFX_DRAW_CALL_BUDGET=40), 4-tier LOD degradation, atlas single-material"
+    coverage: "arch§9.3 (budget); concrete particle tech pending ADR-H"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Game UI / Screen Flow (design/gdd/screen-flow.md) ────────────────────
+  - id: TR-sf-001
+    system: screen-flow
+    gdd: design/gdd/screen-flow.md
+    requirement: "2-layer (base+overlay) state machine, 9 legal composites, T1-T21 transitions"
+    coverage: "arch§6 (ScreenFlowController)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sf-002
+    system: screen-flow
+    gdd: design/gdd/screen-flow.md
+    requirement: "Formula 5 four-term input-lock composition; owns overlay_is_active, attempt_number"
+    coverage: "ADR-005 (D5)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sf-003
+    system: screen-flow
+    gdd: design/gdd/screen-flow.md
+    requirement: "Results transition waits on juice_input_lock with safety ceiling; retry skips Pre-Level Card"
+    coverage: "ADR-005 (D3) + arch§7.3"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sf-004
+    system: screen-flow
+    gdd: design/gdd/screen-flow.md
+    requirement: "Per-screen data contract (reads Save/LevelData; never writes level results directly)"
+    coverage: "arch§6/§8.4"
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Save & Persistence (design/gdd/save-persistence.md) ──────────────────
+  - id: TR-sp-001
+    system: save-persistence
+    gdd: design/gdd/save-persistence.md
+    requirement: "JSON at persistentDataPath; compact canonical bytes; FNV-1a checksum"
+    coverage: ADR-003
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sp-002
+    system: save-persistence
+    gdd: design/gdd/save-persistence.md
+    requirement: "Atomic A/B double-buffer (no rename dependency); corruption ladder; tamper detect+accept"
+    coverage: ADR-003
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sp-003
+    system: save-persistence
+    gdd: design/gdd/save-persistence.md
+    requirement: "Monotonic LevelRecord merge; self-healing total_stars; additive schema migration"
+    coverage: ADR-003
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-sp-004
+    system: save-persistence
+    gdd: design/gdd/save-persistence.md
+    requirement: "record_level_completion / load_profile / get_profile / update_setting / flush_if_dirty API"
+    coverage: ADR-003
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Level Progression / World Map (design/gdd/world-map.md) ──────────────
+  - id: TR-wm-001
+    system: world-map
+    gdd: design/gdd/world-map.md
+    requirement: "Region/node graph; star-gated unlocks; MVP placeholder linear list in WORLD_MAP base state"
+    coverage: "ADR-002 + ADR-006 + arch§6"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-wm-002
+    system: world-map
+    gdd: design/gdd/world-map.md
+    requirement: "W6-W7 manifest cross-validation (every authored level <-> manifest ordinal)"
+    coverage: ADR-006
+    created: 2026-07-18
+    revised: ""
+    status: active
+
+  # ── Cross-cutting performance (.claude/docs/technical-preferences.md) ────
+  - id: TR-perf-001
+    system: technical-preferences
+    gdd: .claude/docs/technical-preferences.md
+    requirement: "60fps / 16.6ms; <=100 draw calls heaviest cascade; <=400MB; no realtime shadows (blob decals); one directional light"
+    coverage: "arch§9 + ADR-002 (memory)"
+    created: 2026-07-18
+    revised: ""
+    status: active
+  - id: TR-perf-002
+    system: technical-preferences
+    gdd: .claude/docs/technical-preferences.md
+    requirement: "URP Render Graph path only; Input System only; UI Toolkit; domain assembly zero-UnityEngine (CI-guarded)"
+    coverage: "ADR-004 (CI guard) + arch§5"
+    created: 2026-07-18
+    revised: ""
+    status: active
