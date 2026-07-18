@@ -1,12 +1,12 @@
 # Story 003: RNG stream isolation, ForkStream & bug-repro session log
 
 > **Epic**: Domain Foundation (E02)
-> **Status**: Ready
+> **Status**: In Review — implementation + full NUnit Edit-Mode suite authored 2026-07-18; PASS evidence pending the first Unity test run (CI blocked on UNITY_LICENSE, concern C8; container has no Unity editor). Do not mark Complete until the suite passes under Mono.
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 2 days
 > **Manifest Version**: 2026-07-18
-> **Last Updated**: —
+> **Last Updated**: 2026-07-18 (gameplay-programmer — Edit-Mode test suite authored)
 
 ## Context
 
@@ -32,14 +32,14 @@
 
 *From GDD `design/gdd/rng-service.md` (Stream Isolation, Bug Repro & Logging) and ADR-004 §3, scoped to this story:*
 
-- [ ] Each named stream has its own `StreamState` (initial + current). `test_stream_isolation`: interleaving 100 `special-drop` draws between `board-refill` draws produces the exact same `board-refill` sequence as a control run with no interleaving.
-- [ ] `ForkStream(parent, label)` derives `childSeed = Mix32(Combine(parentInitialSeed, fnv1a32(label)))`; the child is independent of how many draws the parent has consumed.
-- [ ] `test_fork_stream_isolated_from_parent`: drawing N values from the child does not change what the parent returns next (vs a never-forked control).
-- [ ] `test_fork_stream_deterministic`: two fresh identically-seeded sessions forking the same `(parent, label)` produce identical child output sequences.
-- [ ] `test_fork_stream_idempotent_within_session`: a second `ForkStream(parent, label)` with identical args returns the **same** child stream (continuing its sequence), not a reset second stream.
-- [ ] `test_session_log_contains_repro_fields`: after `StartLevelSession`, `GetSessionLog()` returns a record with non-null `PrimaryId` (level_id), `InstanceId` (attempt_number), `MasterSeed`, and `AlgorithmVersion ("v1")`.
-- [ ] `test_session_log_replay`: feeding a logged `(level_id, attempt_number)` back into a fresh `StartLevelSession` reproduces the same `master_seed`.
-- [ ] `test_no_hidden_bias_parameter_on_draw_functions`: `NextInt`/`NextFloat`/`NextColor`/`Shuffle`/`ForkStream` accept no player-skill/streak/performance/spend parameter (interface inspection).
+- [x] Each named stream has its own `StreamState` (initial + current). `test_stream_isolation`: interleaving 100 `special-drop` draws between `board-refill` draws produces the exact same `board-refill` sequence as a control run with no interleaving. **Covered**: `RngService_Tests.cs::Test_StreamIsolation_Interleaved100SpecialDropDraws_DoNotPerturbBoardRefillSequence` (also cross-checks both the board-refill AND the interleaved special-drop draws against an independent Python oracle via `golden/rng_golden_v1_draws.json`).
+- [x] `ForkStream(parent, label)` derives `childSeed = Mix32(Combine(parentInitialSeed, fnv1a32(label)))`; the child is independent of how many draws the parent has consumed. **Covered**: `RngService_Tests.cs::Test_ForkStream_MatchesGoldenChildSeedAndFirst16Draws`, `Test_ForkStream_ChildSequence_UnaffectedByForkTiming_BeforeOrAfterParentDraws`.
+- [x] `test_fork_stream_isolated_from_parent`: drawing N values from the child does not change what the parent returns next (vs a never-forked control). **Covered**: `RngService_Tests.cs::Test_ForkStream_IsolatedFromParent_ChildDrawsDoNotPerturbParentSequence`.
+- [x] `test_fork_stream_deterministic`: two fresh identically-seeded sessions forking the same `(parent, label)` produce identical child output sequences. **Covered**: `RngService_Tests.cs::Test_ForkStream_Deterministic_AcrossTwoFreshIdenticallySeededSessions`.
+- [x] `test_fork_stream_idempotent_within_session`: a second `ForkStream(parent, label)` with identical args returns the **same** child stream (continuing its sequence), not a reset second stream. **Covered**: `RngService_Tests.cs::Test_ForkStream_Idempotent_SecondCallReturnsSameContinuingChild_NotAReset`.
+- [x] `test_session_log_contains_repro_fields`: after `StartLevelSession`, `GetSessionLog()` returns a record with non-null `PrimaryId` (level_id), `InstanceId` (attempt_number), `MasterSeed`, and `AlgorithmVersion ("v1")`. **Covered**: `RngService_Tests.cs::Test_SessionLog_ContainsReproFields_AfterStartLevelSession` (uses `FakeClock`, never the real wall clock).
+- [x] `test_session_log_replay`: feeding a logged `(level_id, attempt_number)` back into a fresh `StartLevelSession` reproduces the same `master_seed`. **Covered**: `RngService_Tests.cs::Test_SessionLog_Replay_ReproducesSameMasterSeed`.
+- [x] `test_no_hidden_bias_parameter_on_draw_functions`: `NextInt`/`NextFloat`/`NextColor`/`Shuffle`/`ForkStream` accept no player-skill/streak/performance/spend parameter (interface inspection). **Covered**: `RngService_Tests.cs::Test_NoHiddenBiasParameter_OnAnyIRngServiceMethod` (reflects over every `IRngService` method, not just the named subset).
 
 ---
 
@@ -99,7 +99,12 @@
 **Required evidence**:
 - Logic: `tests/unit/rng-service/rng_stream_isolation_fork_log_test.cs` — must exist and pass. In-project: `src/SweetCascade/Assets/Tests/EditMode/Rng/` (ADR-004 §5), headless Mono via game-ci.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-07-18. Every named test above has a matching NUnit method in
+`src/SweetCascade/Assets/Tests/EditMode/Rng/RngService_Tests.cs`, backed by
+`golden/rng_golden_v1.json` + the additive `golden/rng_golden_v1_draws.json` (special-drop raw
+draws + two extra fork vectors, generated via `tools/ci/rng_reference.py`). **Caveat**: no Unity
+installation was available to compile/run the suite this pass — pass/fail confirmation is still
+owed once E01 Story 004's `game-ci` gate is active.
 
 ---
 

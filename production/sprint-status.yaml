@@ -14,7 +14,7 @@ goal: "Unity project scaffolds, CI gate goes green, the Domain assembly proves i
 start: "2026-07-18"
 end: "2026-08-01"          # nominal ~2-week reference only — sprint is SCOPE-BOXED (closes on E01 complete + green CI), not time-boxed
 generated: "2026-07-18"
-updated: "2026-07-18"
+updated: "2026-07-18"  # E02-001..005 moved to review — implementation + test suites authored
 
 stories:
   # ── Must Have — E01 project-scaffold-ci (in full; critical path 001→002→003→004, 005 feeds 004; 006 off-path) ──
@@ -78,44 +78,44 @@ stories:
     name: "RNG primitives & seed derivation (Mix32 / SplitMix32 / F1–F3)"
     file: "production/epics/domain-foundation/story-001-rng-primitives-seed-derivation.md"
     priority: should-have
-    status: backlog
+    status: review
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: ""
+    blocker: "tests authored 2026-07-18 (NUnit Edit Mode); PASS pending first Unity run — CI blocked on UNITY_LICENSE (C8), no local Unity in container"
     completed: ""
   - id: "E02-002"
     name: "RNG draw API — NextFloat / NextInt / NextColor / Shuffle (F4–F6)"
     file: "production/epics/domain-foundation/story-002-rng-draw-api.md"
     priority: should-have
-    status: backlog
+    status: review
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: ""
+    blocker: "tests authored 2026-07-18 (NUnit Edit Mode); PASS pending first Unity run — CI blocked on UNITY_LICENSE (C8), no local Unity in container"
     completed: ""
   - id: "E02-003"
     name: "RNG stream isolation, ForkStream & bug-repro session log"
     file: "production/epics/domain-foundation/story-003-rng-stream-isolation-fork-session-log.md"
     priority: should-have
-    status: backlog
+    status: review
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: ""
+    blocker: "tests authored 2026-07-18 (NUnit Edit Mode); PASS pending first Unity run — CI blocked on UNITY_LICENSE (C8), no local Unity in container"
     completed: ""
   - id: "E02-004"
     name: "RNG golden-vector fixture & byte-for-byte regression suite (Mono PR gate; unblocks E03)"
     file: "production/epics/domain-foundation/story-004-rng-golden-vector-suite.md"
     priority: should-have
-    status: backlog
+    status: review
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: "Mono CI gate needs game-ci active (E01-004 + UNITY_LICENSE); local Test Runner run is unblocked"
+    blocker: "tests authored 2026-07-18 (NUnit Edit Mode); PASS pending first Unity run — CI blocked on UNITY_LICENSE (C8), no local Unity in container"
     completed: ""
   - id: "E02-005"
     name: "LevelData Domain POCO — schema v1, defaults, closed enums, additive display_name"
     file: "production/epics/domain-foundation/story-005-leveldata-poco-schema.md"
     priority: should-have
-    status: backlog
+    status: review
     owner: "unity-specialist"
     estimate_days: 2
-    blocker: ""
+    blocker: "tests authored 2026-07-18 (NUnit Edit Mode); PASS pending first Unity run — CI blocked on UNITY_LICENSE (C8), no local Unity in container"
     completed: ""

@@ -1,12 +1,12 @@
 # Story 005: LevelData Domain POCO — schema v1 shape, defaults, closed enums, additive display_name
 
 > **Epic**: Domain Foundation (E02)
-> **Status**: Ready
+> **Status**: In Review — implementation + full NUnit Edit-Mode suite authored 2026-07-18; PASS evidence pending the first Unity test run (CI blocked on UNITY_LICENSE, concern C8; container has no Unity editor). Do not mark Complete until the suite passes under Mono.
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 2 days
 > **Manifest Version**: 2026-07-18
-> **Last Updated**: —
+> **Last Updated**: 2026-07-18
 
 ## Context
 
@@ -96,7 +96,12 @@
 **Required evidence**:
 - Logic: `tests/unit/level-data-format/leveldata_schema_test.cs` — must exist and pass. In-project: `src/SweetCascade/Assets/Tests/EditMode/Levels/`, headless Mono via game-ci.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-07-18. `Assets/Tests/EditMode/Levels/LevelData_Tests.cs` (39 tests)
+covers QA cases AC-1..AC-4: full-field typed construction, optional-field defaults (`cell_mask` full
+rectangle, `pre_placed_pieces` empty, `rng_seed` -1), additive `display_name` round-trip/default/
+unknown-optional-field warning path with `schema_version` staying 1, closed-enum objective mapping
+with list-order preservation, plus `LevelDataConstants` centralization checks (candy roster,
+`MIN_PLAYABLE_CELLS`, `CURRENT_SCHEMA_VERSION == 1`, supported set {1}, empty migration pipeline).
 
 ---
 

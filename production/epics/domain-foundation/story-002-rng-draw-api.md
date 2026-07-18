@@ -1,12 +1,12 @@
 # Story 002: RNG draw API — NextFloat / NextInt / NextColor / Shuffle (F4–F6)
 
 > **Epic**: Domain Foundation (E02)
-> **Status**: Ready
+> **Status**: In Review — implementation + full NUnit Edit-Mode suite authored 2026-07-18; PASS evidence pending the first Unity test run (CI blocked on UNITY_LICENSE, concern C8; container has no Unity editor). Do not mark Complete until the suite passes under Mono.
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 2 days
 > **Manifest Version**: 2026-07-18
-> **Last Updated**: —
+> **Last Updated**: 2026-07-18 (gameplay-programmer — Edit-Mode test suite authored)
 
 ## Context
 
@@ -32,15 +32,15 @@
 
 *From GDD `design/gdd/rng-service.md` (Distribution Fairness, Input Validation) and ADR-004 §2, scoped to this story:*
 
-- [ ] `NextInt(stream, min, max)` returns a uniform integer in `[min, max]` inclusive via `min + (int)(((ulong)NextRaw() × (uint)(max−min+1)) >> 32)`, consuming **exactly one** raw draw.
-- [ ] `NextColor<T>(stream, activeColors)` returns `activeColors[idx]` via the same multiply-shift over `activeColors.Count`, uniformly.
-- [ ] `Shuffle<T>(stream, source)` returns a **new** array (never mutates the input), Fisher–Yates high-to-low with `NextInt(0,i)` per step, consuming exactly `source.Count − 1` raw draws.
-- [ ] `test_uniform_color_distribution`: over 100,000 `NextColor` draws on a 5-element pool, each color's frequency is within ±2% of 20% (chi-square goodness-of-fit p > 0.01).
-- [ ] `test_next_int_bounds_respected`: 10,000 draws across several `(min,max)` pairs never return a value outside `[min,max]`.
-- [ ] `test_shuffle_preserves_multiset` and `test_shuffle_does_not_mutate_input`: for arrays of length 0, 1, 2, and 20 — the result is a permutation (same multiset), and the input array is unchanged.
-- [ ] `test_next_int_invalid_range_errors`: `min > max` raises immediately (no silent swap).
-- [ ] `test_next_color_empty_pool_errors`: an empty color pool raises immediately (no default color substituted).
-- [ ] `test_boundary_rounding_clamped`: reframed — the multiply-shift can never yield `range` (max `idx == range − 1` by construction), so the F4/F5 "only silent clamp" is satisfied structurally; document this reframing in the test.
+- [x] `NextInt(stream, min, max)` returns a uniform integer in `[min, max]` inclusive via `min + (int)(((ulong)NextRaw() × (uint)(max−min+1)) >> 32)`, consuming **exactly one** raw draw. **Covered**: `RngStream_Tests.cs` (`Test_NextInt0To4_MatchesGolden_*` x5, `Test_NextInt_ConsumesExactlyOneRawDraw`).
+- [x] `NextColor<T>(stream, activeColors)` returns `activeColors[idx]` via the same multiply-shift over `activeColors.Count`, uniformly. **Covered**: `RngStream_Tests.cs` (`Test_NextColor_MatchesGolden_*` x5, `Test_NextColor_ConsumesExactlyOneRawDraw`).
+- [x] `Shuffle<T>(stream, source)` returns a **new** array (never mutates the input), Fisher–Yates high-to-low with `NextInt(0,i)` per step, consuming exactly `source.Count − 1` raw draws. **Covered**: `RngStream_Tests.cs` (`Test_Shuffle_Len20_MatchesGoldenPermutation`, `Test_Shuffle_ConsumesExactlyLengthMinusOneRawDraws`, `Test_Shuffle_Length0Or1_ConsumesZeroRawDraws`, `Test_Shuffle_DoesNotMutateInput_ForSeveralLengths`).
+- [x] `test_uniform_color_distribution`: over 100,000 `NextColor` draws on a 5-element pool, each color's frequency is within ±2% of 20% (chi-square goodness-of-fit p > 0.01). **Covered**: `RngStream_Tests.cs::Test_UniformColorDistribution_100000Draws_WithinTwoPercentBand_AndChiSquarePasses` — independently cross-checked via `tools/ci/rng_reference.py`'s `RngStream` before banking (chi²≈4.4, well under the df=4/α=0.01 critical value 13.277; all 5 shares within [18%,22%]).
+- [x] `test_next_int_bounds_respected`: 10,000 draws across several `(min,max)` pairs never return a value outside `[min,max]`. **Covered**: `RngStream_Tests.cs::Test_NextInt_NeverReturnsValueOutsideBounds_AcrossManyDrawsAndRangePairs` (5 seeds × 7 range pairs × 2,000 draws = 70,000 draws).
+- [x] `test_shuffle_preserves_multiset` and `test_shuffle_does_not_mutate_input`: for arrays of length 0, 1, 2, and 20 — the result is a permutation (same multiset), and the input array is unchanged. **Covered**: `RngStream_Tests.cs` (`Test_Shuffle_PreservesMultiset_ForSeveralLengths`, `Test_Shuffle_DoesNotMutateInput_ForSeveralLengths`).
+- [x] `test_next_int_invalid_range_errors`: `min > max` raises immediately (no silent swap). **Covered**: `RngStream_Tests.cs::Test_NextInt_InvalidRange_ThrowsImmediately_NoSilentSwap`.
+- [x] `test_next_color_empty_pool_errors`: an empty color pool raises immediately (no default color substituted). **Covered**: `RngStream_Tests.cs::Test_NextColor_EmptyPool_ThrowsImmediately_NoDefaultSubstituted`.
+- [x] `test_boundary_rounding_clamped`: reframed — the multiply-shift can never yield `range` (max `idx == range − 1` by construction), so the F4/F5 "only silent clamp" is satisfied structurally; document this reframing in the test. **Covered**: `Mix32_Tests.cs::Test_MultiplyShiftIndex_RawMaxValue_NeverReturnsRange_StructurallyClampedToRangeMinusOne` (doc comment documents the reframing explicitly, per this AC's instruction).
 
 ---
 
@@ -99,7 +99,12 @@
 **Required evidence**:
 - Logic: `tests/unit/rng-service/rng_draw_api_test.cs` — must exist and pass. In-project: `src/SweetCascade/Assets/Tests/EditMode/Rng/` (ADR-004 §5), headless Mono via game-ci.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-07-18. Every named test in the AC list above has a matching NUnit
+method in `src/SweetCascade/Assets/Tests/EditMode/Rng/RngStream_Tests.cs`. **Caveat**: no Unity
+installation was available to compile/run the suite this pass — the chi-square distribution
+assertion was independently pre-verified against `tools/ci/rng_reference.py`'s own `RngStream`
+(chi²≈4.4 << 13.277 critical value) before being banked, but an actual Unity Test Runner pass/fail
+confirmation is still owed once E01 Story 004's `game-ci` gate is active.
 
 ---
 

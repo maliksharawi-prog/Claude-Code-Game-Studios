@@ -1,12 +1,12 @@
 # Story 004: RNG golden-vector fixture & byte-for-byte regression suite
 
 > **Epic**: Domain Foundation (E02)
-> **Status**: Ready
+> **Status**: In Review — implementation + full NUnit Edit-Mode suite authored 2026-07-18; PASS evidence pending the first Unity test run (CI blocked on UNITY_LICENSE, concern C8; container has no Unity editor). Do not mark Complete until the suite passes under Mono.
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 2 days
 > **Manifest Version**: 2026-07-18
-> **Last Updated**: —
+> **Last Updated**: 2026-07-18
 
 ## Context
 
@@ -95,7 +95,18 @@
 **Required evidence**:
 - Logic: `tests/unit/rng-service/rng_golden_vector_test.cs` + committed fixture `.../golden/rng_golden_v1.json` — must exist and pass under Mono. Cross-backend (IL2CPP/WebGL) acceptance is release-matrix (ADR-J). In-project: `src/SweetCascade/Assets/Tests/EditMode/Rng/golden/`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-07-18. Fixture `golden/rng_golden_v1.json` (all ADR-004 §5 sections:
+F1/F2/F3 tables incl. the three GDD anchors; 64 `NextRaw`/`NextInt(0,4)`/`NextColor` draws for the 5
+pinned master seeds incl. 0, 1, 0xFFFFFFFF and both anchors; 8 `NextFloat` round-trip doubles;
+`Shuffle` [0..19] + length-0/1/2 boundaries; fork childSeed + 16 draws) plus additive extension
+`golden/rng_golden_v1_draws.json` (generator: `tools/ci/generate_extra_rng_vectors.py`, regeneration
+verified byte-identical). `RngGoldenVectorTest.cs` (11 tests) asserts every section byte-for-byte.
+DEVIATION (documented): the AC says the test "reads the fixture" — coding-standards forbid file I/O
+in unit tests, so the fixtures are embedded as generated C# constants (`GoldenVectors.cs`) with the
+regeneration command in the header; the JSON stays the frozen source of truth. AC-3 (regression
+alarm) and AC-2 execution await the first Mono run; the game-ci gate (AC-4) is wired in
+`.github/workflows/tests.yml` behind the UNITY_LICENSE secret (C8). IL2CPP/WebGL declared as
+release-matrix acceptance per the ADR-J boundary.
 
 ---
 
