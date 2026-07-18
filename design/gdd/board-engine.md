@@ -1,6 +1,6 @@
 # Match-3 Board Engine
 
-*Status: Draft — awaiting /design-review*
+*Status: Reviewed — NEEDS REVISION (design-review lean, 2026-07-18) — see `design/gdd/reviews/board-engine-review-log.md`*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Core · Priority: MVP · Phase: MVP · Category: Gameplay*
@@ -206,11 +206,9 @@ Board Engine reads exactly five Level Data Format fields at bootstrap:
 `grid_width`, `grid_height`, `cell_mask`, `pre_placed_pieces`,
 `color_pool`. It does **not** read `move_limit`, `objectives`, or the star
 threshold fields — those are Level Objective & Move-Limit System's scope
-per `systems-index.md`'s system boundaries. (`level-data-format.md`'s own
-Dependencies table currently lists `move_limit` as something Board Engine
-reads at bootstrap; this document's position is that it does not need to,
-since Board Engine enforces no move-limit-driven behavior of its own — see
-Cross-References for this flagged discrepancy.)
+per `systems-index.md`'s system boundaries. `level-data-format.md`'s
+Dependencies table has been reconciled to this position: it now explicitly
+states Board Engine does **not** read `move_limit` (see Cross-References).
 
 ### 3. Extension Seams (Special Candies Handoff)
 
@@ -510,13 +508,18 @@ exhausts with no result.
 `has_available_move()` is `false`:
 
 1. Collect every currently `OCCUPIED` piece's `(color, special_type)` pair
-   into a flat list (positions are not part of what's shuffled — only the
-   *assignment* of piece attributes to positions is shuffled).
+   into a flat list, traversed in row-major order (row `0` → `rows-1`, left
+   to right within each row — the same fixed traversal convention Bootstrap
+   Fill uses, § Detailed Rules 2 step 7), so the mapping from list index
+   back to grid position is unambiguous and reproducible (positions are not
+   part of what's shuffled — only the *assignment* of piece attributes to
+   positions is shuffled).
 2. Call `RNG_Service.shuffle("board-refill", list)` (Fisher–Yates, per
    `rng-service.md` Formula F6) to produce a candidate reassignment.
-3. Apply the candidate to the board; check two conditions: (a) zero runs
-   currently exist (§ Detailed Rules 4), and (b) `has_available_move()` is
-   `true`.
+3. Apply the candidate to the board — each candidate-list index maps back to
+   the same row-major-ordered cell it was collected from in step 1; check
+   two conditions: (a) zero runs currently exist (§ Detailed Rules 4), and
+   (b) `has_available_move()` is `true`.
 4. If both hold, the reshuffle succeeds — emit `board_reshuffled(attempts_used)`
    and proceed to `Idle`. If either fails, repeat from step 2.
 5. Retry up to `RESHUFFLE_MAX_TRIES` (default `60`, matching the concept
@@ -724,16 +727,23 @@ constraint: cell_size_px(gw, gh) ≥ MIN_TOUCH_TARGET_PX   for every (gw, gh) �
 | `MIN_TOUCH_TARGET_PX` | float constant | fixed `44` | `.claude/docs/technical-preferences.md` | The hard floor |
 
 **Proof of full-range coverage (not a spot check).** `cell_size_px(gw, gh)
-= min(available_width_px / gw, available_height_px / gh)` is strictly
-decreasing in both `gw` and `gh` for fixed, positive `available_width_px`
-and `available_height_px` (each term is a positive constant divided by an
-increasing variable). Over the rectangular integer domain `[3,9] × [3,9]`,
-a function that is monotonically decreasing in both arguments attains its
-**global minimum at the domain's upper-right corner**, `(gw, gh) = (9, 9)`.
-Therefore, verifying the constraint holds at exactly `(9, 9)` is
-**sufficient** to guarantee it holds for every other `(gw, gh)` pair in the
-schema-legal range — this is a complete proof, not a sampled worked
-example.
+= min(available_width_px / gw, available_height_px / gh)` is monotonically
+**non-increasing** in both `gw` and `gh` for fixed, positive
+`available_width_px` and `available_height_px`: each individual term (a
+positive constant divided by `gw` or `gh` respectively) is strictly
+decreasing in its own variable, and the minimum of two coordinate-wise
+non-increasing functions is itself non-increasing in each argument —
+increasing `gw` or `gh` (holding the other fixed) can only decrease or hold
+constant the result, never increase it. Over the rectangular integer domain
+`[3,9] × [3,9]`, a function that is jointly non-increasing in both arguments
+attains its **global minimum at the domain's upper-right corner**,
+`(gw, gh) = (9, 9)` — the corner-minimum conclusion holds whether the
+function is strictly or only weakly decreasing at any given point, since the
+proof only requires that no other point in the domain can produce a
+*smaller* value than the corner. Therefore, verifying the constraint holds
+at exactly `(9, 9)` is **sufficient** to guarantee it holds for every other
+`(gw, gh)` pair in the schema-legal range — this is a complete proof, not a
+sampled worked example.
 
 **Worked example (the binding case, `gw = 9, gh = 9`):**
 ```
@@ -827,7 +837,7 @@ minimum color pool, `w = 3` minimum clear):
 ```
 p_continue(3, 3) = 1 − (1 − 1/9)^3 = 1 − (0.8889)^3 = 1 − 0.7023 ≈ 0.2977   (~29.8%)
 
-P(depth > 8)  ≈ 0.2977^8 ≈ 0.2977 × 0.2977 × ... (8 times) ≈ 0.000039   (~0.004%)
+P(depth > 8)  ≈ 0.2977^8 ≈ 0.2977 × 0.2977 × ... (8 times) ≈ 0.0000617   (~0.0062%)
 ```
 
 By depth 8, the approximate probability of a chain continuing is already
@@ -857,7 +867,7 @@ max_draws_per_move = max_cells_per_step × MAX_CASCADE_DEPTH
 |---|---|---|---|
 | `max_cells_per_step` | int | `[9, 81]` | Formula 5's output |
 | `MAX_CASCADE_DEPTH` | int | `20` (default, Tuning Knobs) | Formula 6's derived safety cap |
-| `max_draws_per_move` | int | `[27, 1620]` | Absolute worst-case count of `board-refill` draws a single player move could ever consume |
+| `max_draws_per_move` | int | `[180, 1620]` | Absolute worst-case count of `board-refill` draws a single player move could ever consume |
 
 **Output range**: Bounded above by `1620` at the schema's most extreme
 configuration (`9×9` board, `MAX_CASCADE_DEPTH=20`, assuming every one of
@@ -909,7 +919,7 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 |---|---|---|
 | RNG Service (`design/gdd/rng-service.md`, APPROVED) | Board Engine depends on it | Consumes the `board-refill` stream (stream_id 1) for bootstrap fill, cascade-step refill, and both reshuffle paths, in the fixed call order documented in § Detailed Rules 6. Calls `start_level_session(level_id=manifest_index, attempt_number)` at bootstrap, resolving `level_id` via the Level Manifest this document owns (Formula 1). |
 | Touch & Input System (`design/gdd/touch-input.md`, APPROVED) | Bidirectional | Board Engine depends on it for `select_cell`/`swap_request`/`cancel` intents (Board Engine ignores `select_cell`/`cancel`, since selection-state is entirely Touch & Input's own internal concern — only `swap_request` reaches this document). Touch & Input, in turn, depends on Board Engine for the `board_input_enabled` boolean it gates all gesture recognition against (`board_input_enabled_changed` signal, § Detailed Rules 7) and for `cell_size_px`, which Board Engine's rendering computes per level (Formula 4) and Touch & Input's own Formulas 1 and 3 consume as an external runtime input. **Recommended follow-up** (not made here, per this document's file-edit scope): `touch-input.md`'s Dependencies section should be updated to cite this document as the authoritative source of `cell_size_px`, rather than treating it as an opaque externally-supplied value. |
-| Level Data Format (`design/gdd/level-data-format.md`, APPROVED) | Board Engine depends on it | Reads exactly `grid_width`, `grid_height`, `cell_mask`, `pre_placed_pieces`, `color_pool` at bootstrap (§ Detailed Rules 2). **Flagged discrepancy**: `level-data-format.md`'s own Dependencies table currently lists `move_limit` as a field Board Engine reads; this document's position is that Board Engine has no move-limit-driven behavior and does not need it — move-limit enforcement is Level Objective & Move-Limit System's scope per `systems-index.md`. Recommend reconciling this in a future `level-data-format.md` revision (not made here). |
+| Level Data Format (`design/gdd/level-data-format.md`, APPROVED) | Board Engine depends on it | Reads exactly `grid_width`, `grid_height`, `cell_mask`, `pre_placed_pieces`, `color_pool` at bootstrap (§ Detailed Rules 2). Board Engine has no move-limit-driven behavior — move-limit enforcement is Level Objective & Move-Limit System's scope per `systems-index.md`. `level-data-format.md`'s Dependencies table now correctly reflects this (its Match-3 Board Engine row states "Does NOT read `move_limit`"), reconciling what was previously a flagged discrepancy. |
 | Special Candies & Combo Matrix (`design/gdd/special-candies.md`, not yet authored) | Will depend on Board Engine | Implements all four extension seams (§ Detailed Rules 3) and subscribes to `match_cleared`/`special_spawned`/`cascade_ended` for its own bookkeeping (e.g., harvested-ingredient tallies by color). Board Engine has zero dependency on it — every seam has a documented MVP no-op default. **Reciprocal note**: when authored, its Dependencies section must list this document and confirm its seam implementations against the signatures in § Detailed Rules 3. |
 | Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, not yet authored) | Will depend on Board Engine | Consumes `match_cleared` (`chain_index`, `cleared_cells`, `trigger_source`) and `cascade_ended` (`final_chain_index`) to compute point values — Board Engine emits the *count* and the *chain depth*, never a point value itself. **Reciprocal note**: when authored, its Dependencies section must list this document. |
 | Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, not yet authored) | Will depend on Board Engine | Consumes `swap_accepted` (a move was spent — the *only* move-related fact Board Engine reports) and `match_cleared`'s color/cell data (for `collect_color` objective tallies) — reads `move_limit` directly from Level Data Format, not through Board Engine. **Reciprocal note**: when authored, its Dependencies section must list this document. |
@@ -1153,7 +1163,7 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 | RNG draw call-order documentation requirement | `design/gdd/rng-service.md` | Edge Cases table, "that order must be documented in `board-engine.md`'s implementation" | Resolved here (§ Detailed Rules 6) |
 | 44px touch-target floor vs. 3–9 grid range compatibility | `design/gdd/touch-input.md` review log; `design/gdd/level-data-format.md` review log | Both logs' "Recommended Revisions — Advisory" items requesting this document close the gap | Resolved here (Formula 4) |
 | `cell_size_px` authoritative source | `design/gdd/touch-input.md` | Formulas 1 and 3, which consume `cell_size_px` as an externally-supplied runtime value | This document is that authoritative source (Formula 4); `touch-input.md` itself is not edited here |
-| Flagged discrepancy: `move_limit` field consumption | `design/gdd/level-data-format.md` | Dependencies table's Match-3 Board Engine row | This document does not read `move_limit`; flagged for future reconciliation, not edited here |
+| `move_limit` field non-consumption | `design/gdd/level-data-format.md` | Dependencies table's Match-3 Board Engine row | Resolved — this document does not read `move_limit`, and `level-data-format.md`'s Dependencies table has been reconciled to state this explicitly (previously flagged here as a discrepancy; confirmed fixed as of this review) |
 | Reference tuning values (8×8 board, 5 colors, cascade behavior) | `prototypes/sweet-cascade-concept/REPORT.md` | "If Proceeding" section; Lessons Learned (spawn anchoring, special-×-special chains) | Data dependency (prototype, not a GDD — cited as design rationale throughout Detailed Rules and Formulas) |
 | Level Manifest addition to the authoring workflow | `design/gdd/level-data-format.md` | §5, Authoring Workflow | Recommended follow-up (§ Detailed Rules 2) — a new step appending to `level_manifest.tres` at validation time; not made in that document here |
 
@@ -1165,6 +1175,6 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 |---|---|---|---|
 | Should `GRAVITY_MODE`'s `fall_through_void` alternative ever be built as a real level-design mechanic ("portal tiles"), or should it be removed from Tuning Knobs entirely as speculative? | game-designer | Revisit at Alpha content planning, once more non-rectangular `cell_mask` levels exist to evaluate demand | — |
 | Should Board Engine's `BOARD_SIDE_MARGIN_PX`/`BOARD_TOP_ALLOCATION_PX`/`BOARD_BOTTOM_ALLOCATION_PX` constants move to a future `design/ux/hud.md` once that UX spec exists, to avoid two sources of truth for screen layout? | game-designer / ux-designer | At `design/ux/hud.md` authoring, if/when it supersedes these provisional values | — |
-| Does `level-data-format.md`'s Dependencies table need a follow-up correction removing `move_limit` from Board Engine's listed field consumption (§ Detailed Rules 2's flagged discrepancy)? | systems-designer | At next `level-data-format.md` review pass | — |
+| Does `level-data-format.md`'s Dependencies table need a follow-up correction removing `move_limit` from Board Engine's listed field consumption (§ Detailed Rules 2's flagged discrepancy)? | systems-designer | At next `level-data-format.md` review pass | **Resolved** — confirmed during this review (2026-07-18) that `level-data-format.md`'s Dependencies table already states Board Engine does not read `move_limit`; no further action needed. |
 | Should the Level Manifest (`level_manifest.tres`) formally become a step in `level-data-format.md`'s §5 Authoring Workflow, rather than living only in this document? | systems-designer / game-designer | Before the first non-MVP level batch is authored (Alpha content planning) | — |
 | Is Formula 6's `p_continue` heuristic worth replacing with an empirical measurement (instrumented cascade-depth histogram from real playtest sessions) once Vertical Slice levels exist, rather than relying on the analytical approximation? | systems-designer | At Vertical Slice, once real play data exists | — |
