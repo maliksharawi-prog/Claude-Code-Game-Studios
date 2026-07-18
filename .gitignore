@@ -143,3 +143,17 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+
+# === Unity generated (never commit — editor rebuilds these) ===
+# Scoped to the Unity project root(s) under src/
+src/**/[Ll]ibrary/
+src/**/[Tt]emp/
+src/**/[Ll]ogs/
+src/**/[Uu]serSettings/
+src/**/[Oo]bj/
+src/**/[Bb]uild/
+src/**/[Bb]uilds/
+src/**/.vs/
+src/**/*.csproj
+src/**/*.sln
+src/**/crashlytics-build.properties
