@@ -1,12 +1,15 @@
 # Story 005: Edit/Play Mode test skeletons + example conventions test
 
 > **Epic**: Project Scaffold & CI Activation (E01)
-> **Status**: Ready
+> **Status**: In Review — PlayMode asmdef + EditMode skeleton folders + both example tests
+> (`ConventionsExampleTests.cs`, `SmokeExampleTests.cs`) authored 2026-07-18; PASS evidence
+> pending the first Unity test run (CI blocked on UNITY_LICENSE, concern C8; container has no
+> Unity editor). Do not mark Complete until both suites pass under the Unity Test Runner.
 > **Layer**: Foundation (infrastructure / test harness)
 > **Type**: Integration
 > **Estimate**: 1.5 days
 > **Manifest Version**: 2026-07-18
-> **Last Updated**: —
+> **Last Updated**: 2026-07-18 (gameplay-programmer — PlayMode asmdef, skeleton folders, and both example tests authored)
 
 ## Context
 
@@ -32,12 +35,12 @@
 
 *From `tests/README.md`, coding-standards Testing Standards, and `architecture.md` §5.3, scoped to this story:*
 
-- [ ] The Edit Mode test asmdef `Assets/Tests/EditMode/SweetCascade.Domain.Tests.asmdef` exists (created in Story 002) and the `EditMode/` skeleton folders from `tests/README.md` are present (`Rng/ Board/ Specials/ Scoring/ Objectives/ Save/` — empty/`.gitkeep`, mirroring the planned coverage map).
-- [ ] The Play Mode test asmdef `Assets/Tests/PlayMode/SweetCascade.Game.Tests.asmdef` exists, references `SweetCascade.Game` + `SweetCascade.Domain` + the Test Framework, and its `PlayMode/` folder is present.
-- [ ] One **example EditMode conventions test** exists and **passes** headlessly: it encodes the mandated file/method naming and Arrange/Act/Assert structure (e.g. `Assets/Tests/EditMode/Conventions/ConventionsExampleTests.cs` with `Test_DomainAssembly_IsEngineFree()` or a trivial deterministic arithmetic assertion) — serving as the copy-me template for later logic stories.
-- [ ] One **example PlayMode smoke test** exists and **passes**: a minimal test that enters play/loads the empty scene and asserts a trivially true integration condition, proving the PlayMode harness runs under game-ci.
-- [ ] Both example tests run and pass under `game-ci/unity-test-runner@v4 testMode: all` (verified via Story 004's gate). Empty suites elsewhere are acceptable.
-- [ ] The example tests are deterministic and isolated (no seeds, no clock, no IO) — they must not become a source of flaky CI.
+- [x] The Edit Mode test asmdef `Assets/Tests/EditMode/SweetCascade.Domain.Tests.asmdef` exists (created in Story 002) and the `EditMode/` skeleton folders from `tests/README.md` are present (`Rng/ Board/ Specials/ Scoring/ Objectives/ Save/` — empty/`.gitkeep`, mirroring the planned coverage map). `Rng/` and `Levels/` are already populated by E02; `Board/ Specials/ Scoring/ Objectives/ Save/` added 2026-07-18 as empty `.gitkeep` folders.
+- [x] The Play Mode test asmdef `Assets/Tests/PlayMode/SweetCascade.Game.Tests.asmdef` exists, references `SweetCascade.Game` + `SweetCascade.Domain` + the Test Framework, and its `PlayMode/` folder is present. Authored 2026-07-18.
+- [~] One **example EditMode conventions test** exists (e.g. `Assets/Tests/EditMode/Conventions/ConventionsExampleTests.cs` with `Test_DomainAssembly_IsEngineFree()`) — serving as the copy-me template for later logic stories. **Authored, not yet confirmed passing** (no Unity editor available in this authoring pass — see Test Evidence).
+- [~] One **example PlayMode smoke test** exists (`Assets/Tests/PlayMode/SmokeExampleTests.cs`, `Test_PlayModeHarness_EntersPlayAndRunsOneFrame_AssertsTriviallyTrue()`) — a minimal `[UnityTest]` that enters Play Mode and asserts a trivially true integration condition. **Authored, not yet confirmed passing.**
+- [ ] Both example tests run and pass under `game-ci/unity-test-runner@v4 testMode: all` (verified via Story 004's gate). Empty suites elsewhere are acceptable. **Not yet verified — blocked on UNITY_LICENSE (C8), same as Story 004 and E02-001..005.**
+- [x] The example tests are deterministic and isolated (no seeds, no clock, no IO) — they must not become a source of flaky CI. Verified by code review: no `System.Random`, no `DateTime`, no filesystem/network IO in either test file.
 
 ---
 
@@ -96,7 +99,16 @@
 **Story Type**: Integration
 **Required evidence**: Integration/automated — the example EditMode and PlayMode tests **must pass** (both locally in Test Runner and in the game-ci gate). Evidence: the committed example tests + a documented run in `production/qa/evidence/story-005-test-harness-evidence.md` (Test Runner pass + the game-ci run showing both modes executed). The EditMode example doubles as Logic-grade automated evidence for the harness.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-07-18. Both example tests
+(`Assets/Tests/EditMode/Conventions/ConventionsExampleTests.cs`,
+`Assets/Tests/PlayMode/SmokeExampleTests.cs`) and the PlayMode asmdef are authored, and a
+documented-run evidence doc exists at
+`production/qa/evidence/story-005-test-harness-evidence.md`. **Caveat**: this authoring pass
+had no Unity installation available to compile/run either suite — tests are written and
+internally consistent with the project's NUnit/Unity Test Framework conventions, but pass/fail
+has not been confirmed by an actual Unity Test Runner execution, and the `game-ci` gate run is
+blocked on the `UNITY_LICENSE` secret (concern C8), same as Story 004 and E02-001..005. Do not
+treat this as a green CI run — that confirmation is still owed once Story 004's gate is active.
 
 ---
 

@@ -58,10 +58,10 @@ stories:
     name: "Edit/Play Mode test skeletons + example conventions test"
     file: "production/epics/project-scaffold-ci/story-005-edit-play-test-skeletons.md"
     priority: must-have
-    status: ready-for-dev
+    status: review
     owner: "unity-specialist"
     estimate_days: 1.5
-    blocker: ""
+    blocker: "tests authored 2026-07-18 (NUnit Edit Mode + Play Mode); PASS pending first Unity run — CI blocked on UNITY_LICENSE (C8), no local Unity in container"
     completed: ""
   - id: "E01-006"
     name: "Editor tooling folder layout + manifest-generator stub placement (off critical path)"
