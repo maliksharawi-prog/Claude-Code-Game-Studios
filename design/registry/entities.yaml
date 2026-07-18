@@ -139,7 +139,27 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: BIG_CASCADE_CHAIN_THRESHOLD
+    status: active
+    source: design/art/art-bible.md
+    referenced_by:
+      - design/art/art-bible.md      # defines the "big cascade" VFX escalation point
+      - design/gdd/juice-layer.md    # switches callout/particle tier at this chain index
+    value: 4
+    unit: chain_index
+    added: 2026-07-18
+    revised: ""
+
+  - name: FLASH_SAFETY_MAX_HZ
+    status: active
+    source: design/gdd/juice-layer.md
+    referenced_by:
+      - design/gdd/juice-layer.md    # WCAG-derived full-screen flash ceiling
+    value: 3
+    unit: flashes_per_second
+    added: 2026-07-18
+    revised: ""
 
 # Example:
 #
