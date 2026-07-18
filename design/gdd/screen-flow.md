@@ -508,32 +508,51 @@ is false → `is_unlocked = false`, and T3 (no-op tap) applies.
 **Named expression:**
 ```
 effective_board_input_enabled = (base_state == GAMEPLAY)
-                                 AND board_engine_ready
+                                 AND board_input_enabled
                                  AND NOT overlay_is_active
+                                 AND NOT juice_input_lock
 ```
 
 | Symbol | Type | Range | Description |
 |--------|------|-------|--------------|
 | `base_state` | enum | `{BOOT_LOADING, WORLD_MAP, GAMEPLAY, RESULTS_WIN, RESULTS_LOSE}` | Current Base Layer state (§1); Screen Flow-owned. |
-| `board_engine_ready` | bool | {true, false} | Board Engine's own internal busy-state signal — true only when idle between cascade/gravity/refill steps. |
+| `board_input_enabled` | bool | {true, false} | Board Engine's own internal busy-state signal (`board_input_enabled_changed`, `board-engine.md` § Detailed Rules 7) — true only when idle between cascade/gravity/refill steps. |
 | `overlay_is_active` | bool | {true, false} | True whenever `PAUSE` or `SETTINGS` is currently open; Screen Flow-owned. |
+| `juice_input_lock` | bool | {true, false} | True for the full duration of the Juice Layer's Reveal Queue replay for the current move — from the first Reveal Step dequeued until `SETTLE_REVEAL` completes; Juice Layer-owned (`juice-layer.md` §10, Formula 5). |
 | `effective_board_input_enabled` | bool | {true, false} | The value Touch & Input's Rule 4 busy-gate actually reads before accepting any gesture. |
 
-**Output range**: boolean. `PRE_LEVEL_CARD` never co-occurs with
-`GAMEPLAY` (§1), so `overlay_is_active` is only ever practically exercised
-by `PAUSE`/`SETTINGS`, but the formula is written generally so it stays
-correct if a future screen composes overlays over Gameplay differently.
+**Output range**: boolean; `true` only when all four independently-owned
+conditions hold simultaneously — any single system's veto is sufficient to
+keep input locked, and no system needs to know about the others' internal
+state to correctly contribute its own term. `PRE_LEVEL_CARD` never co-occurs
+with `GAMEPLAY` (§1), so `overlay_is_active` is only ever practically
+exercised by `PAUSE`/`SETTINGS`, but the formula is written generally so it
+stays correct if a future screen composes overlays over Gameplay
+differently.
 
-**Worked example**: a player is mid-cascade (`board_engine_ready = false`)
-when they tap the Pause icon (T8). At the instant of the tap:
-`base_state = GAMEPLAY`, `overlay_is_active` becomes `true`,
-`board_engine_ready` is still `false` (cascade still resolving) →
-`effective_board_input_enabled = true AND false AND NOT true = false`
-either way. Touch & Input was already dropping gestures from the live
-cascade; it now stays dropped for the independent reason of the open
-overlay, even once the cascade finishes settling `board_engine_ready` back
-to `true`, until the player taps Resume (T10) and `overlay_is_active`
-clears.
+**Worked example 1 (overlay veto)**: a player is mid-cascade
+(`board_input_enabled = false`) when they tap the Pause icon (T8). At the
+instant of the tap: `base_state = GAMEPLAY`, `overlay_is_active` becomes
+`true`, `board_input_enabled` is still `false` (cascade still resolving),
+and `juice_input_lock` is also `true` (the Juice Layer is still replaying
+this move's cascade) → `effective_board_input_enabled = true AND false AND
+NOT true AND NOT true = false`. Touch & Input was already dropping gestures
+from the live cascade; it now stays dropped for two further independent
+reasons (the open overlay and the in-flight juice replay), even once the
+cascade finishes settling `board_input_enabled` back to `true` and the
+replay itself finishes clearing `juice_input_lock`, until the player taps
+Resume (T10) and `overlay_is_active` clears.
+
+**Worked example 2 (juice-replay veto, no overlay open)**: a player's swap
+has fully resolved inside Board Engine (`board_input_enabled` flips back to
+`true` synchronously, the same frame the swap was submitted) and no overlay
+is open (`overlay_is_active = false`), but the Juice Layer is still on
+cascade step 3 of a 4-step Reveal Queue (`juice_input_lock = true`) —
+`effective_board_input_enabled = true AND true AND true AND NOT true =
+false`. The player cannot fire a new swap yet even though Board Engine
+itself is already idle; `effective_board_input_enabled` only flips `true`
+once the Reveal Queue's `SETTLE_REVEAL` step completes and `juice_input_lock`
+clears (`juice-layer.md` §10, Formula 5's own identical worked example).
 
 ---
 
@@ -690,11 +709,12 @@ the relevant signal):
 - [ ] Formula 4 reproduces both worked-example outcomes (`best_stars=2` →
       unlocked; `best_stars=0`/no record → locked) for
       `MIN_STARS_TO_UNLOCK_NEXT = 1`.
-- [ ] Formula 5 reproduces `effective_board_input_enabled = false` for the
-      worked example (overlay active, regardless of `board_engine_ready`),
-      and `true` only when all three of `base_state == GAMEPLAY`,
-      `board_engine_ready == true`, and `overlay_is_active == false` hold
-      simultaneously.
+- [ ] Formula 5 reproduces `effective_board_input_enabled = false` for both
+      worked examples (overlay active regardless of `board_input_enabled`;
+      and `juice_input_lock` active alone with no overlay open), and `true`
+      only when all four of `base_state == GAMEPLAY`,
+      `board_input_enabled == true`, `overlay_is_active == false`, and
+      `juice_input_lock == false` hold simultaneously.
 - [ ] Formula 6's worked examples reproduce `is_new_best_stars = true,
       is_new_best_score = true` for the improving-result case and `false,
       false` for the non-improving case, using the pre-attempt snapshot
