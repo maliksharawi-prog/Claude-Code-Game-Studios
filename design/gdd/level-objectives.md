@@ -1,13 +1,27 @@
 # Level Objective & Move-Limit System
 
-*Status: Reviewed — NEEDS REVISION (lean review, 2026-07-18)*
+*Status: Revised — seam reconciled, awaiting re-review (2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Gameplay*
 *Author: systems-designer*
-*Depends On: Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2), Level Data Format (`design/gdd/level-data-format.md`, APPROVED), Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, being authored in parallel — this document proposes a seam contract against it, see § Dependencies and Open Questions)*
+*Depends On: Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2), Level Data Format (`design/gdd/level-data-format.md`, APPROVED), Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, Revised — Revision 2 — this document pulls its ratified Score Query API, see § Detailed Rules 3, 9 and Dependencies)*
 *Depended On By: Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft), Booster Brewing Meta (#12, Phase 2, gated, not yet authored)*
 *Source: `design/gdd/systems-index.md` · `design/gdd/level-data-format.md` §§2–4 · `design/gdd/board-engine.md` §§ Detailed Rules 3, 4, 5, 6, 7, 11, 13 · `design/gdd/special-candies.md` §§ Detailed Rules 5, 6, 9, 10 · `design/gdd/screen-flow.md` §§7, 11 · `design/gdd/rng-service.md` · `design/gdd/game-concept.md` · `design/art/art-bible.md`*
+
+*Revision 2 Changelog (2026-07-18):* Dropped the proposed
+`ScoreProvider.finalize_results()` push seam from § Detailed Rules 9. Level
+Objective is now formally the `ResultsData` assembler: at the resolving
+`board_stabilized` it pulls Scoring's contributed fields via the ratified
+`get_score_results() -> ScoreResults` seam and composes the full
+`ResultsData` itself, alongside its own `outcome` and objective-completion
+data, before firing `level_resolved`. `get_current_score()` (§ Detailed
+Rules 3) is likewise now formally ratified. Resolves
+`level-objectives-review-log.md` Required Before Implementation #1
+(blocking seam-composition mismatch) and Recommended Revisions #1
+(unratified `get_current_score()`); mirrored in
+`scoring-stars-review-log.md` Required Before Implementation #1 and its
+Seam Handshake Audit's secondary advisory gap.
 
 ---
 
@@ -28,9 +42,10 @@ semantics of each objective type belong here).
 
 This document defines exactly two things, and deliberately nothing more at
 MVP: **(a)** how each of the two MVP objective types tracks its own progress
-using only Board Engine's already-published signal catalog and one small,
-explicitly-declared seam into Scoring & Star Thresholds — with **zero new
-API surface required from Board Engine or Special Candies & Combo Matrix**;
+using only Board Engine's already-published signal catalog and two small,
+explicitly-declared query seams into Scoring & Star Thresholds — with
+**zero new API surface required from Board Engine or Special Candies &
+Combo Matrix**;
 and **(b)** the single evaluation instant, `board_stabilized`, and only
 `board_stabilized`, at which a level's outcome is decided — so that a
 cascade triggered by the player's final legal move can complete an
@@ -188,9 +203,9 @@ score-provider seam" both this document and Scoring & Star Thresholds were
 scoped against** (`systems-index.md`'s Circular Dependencies note: "Objective
 reads the live score to check score-target completion... Scoring never
 needs Objective's internal state... resolved as a one-directional read").
-Because Scoring & Star Thresholds is being authored in parallel, this exact
-function name and signature is a **proposed contract**, not a confirmed one
-— see Open Questions.
+This exact function name and signature is now **formally ratified** by
+Scoring & Star Thresholds § Detailed Rules 10a (Revision 2) — see this
+document's Revision 2 changelog.
 
 ### 4. `collect_color` Tracking — The Unified Piece-Removal Counting Rule
 
@@ -387,11 +402,16 @@ exactly:
 level_resolved(outcome: enum{WIN, LOSE}, results_data: ResultsData)
 ```
 
-**Constructing `results_data` — the ownership split, stated precisely.**
-Per the task's own framing, "the `ResultsData` payload is Scoring's to
-define" — this document never invents `ResultsData`'s field names or
-types. What this document supplies is its own, narrower, fully-owned
-resolution summary:
+**Constructing `results_data` — Level Objective is the sole assembler
+(Revision 2 reconciliation).** Scoring & Star Thresholds still owns
+*defining* the field names, types, and computation of every score-side
+`ResultsData` field (`score_earned`, `stars_earned`,
+`closest_miss_summary.score_progress_ratio`/`score_progress_percent`) —
+this document never invents or recomputes those. What changed is who
+*assembles* the record: Level Objective, not Scoring, composes the complete
+`ResultsData` and fires `level_resolved` with it. This document's own,
+narrower, fully-owned resolution summary remains the input that
+composition uses for the objective-completion side:
 
 ```
 ObjectivesResolution = {
@@ -413,23 +433,46 @@ ObjectiveResult = {
 ```
 
 At the exact `board_stabilized` instant an outcome is determined, Level
-Objective calls a second, proposed synchronous seam into Scoring & Star
-Thresholds:
+Objective calls Scoring & Star Thresholds' ratified pull seam:
 
 ```
-ScoreProvider.finalize_results(objectives_resolution: ObjectivesResolution) -> ResultsData
+ScoreProvider.get_score_results() -> ScoreResults
 ```
 
-Scoring computes and returns the fully-populated `ResultsData` (adding, at
-minimum, `stars_earned`, `score_earned`, and `closest_miss_summary` per
-`screen-flow.md` §11's already-declared field table) using
-`objectives_resolution` as its raw input. Level Objective then emits
-`level_resolved(outcome, results_data)` using that returned value verbatim
-as the second argument — it never inspects or depends on `ResultsData`'s
-internal shape beyond passing it through. **This function name and
-signature is a proposed contract**, exactly like § Detailed Rules 3's
-`get_current_score()` — pending confirmation once Scoring & Star Thresholds
-is authored (see Open Questions).
+(`scoring-stars.md` § Detailed Rules 10a; `ScoreResults = {final_score,
+stars_earned, score_progress_ratio, score_progress_percent}` — every field
+Scoring owns and computes.) Level Objective then composes `ResultsData`
+itself:
+
+```
+ResultsData = {
+    level_id: String,                     // pass-through, screen-flow.md §11
+    outcome: enum{WIN, LOSE},              // = this ObjectivesResolution's outcome (Formula 4)
+    score_earned: int,                     // = ScoreResults.final_score
+    stars_earned: int,                     // = ScoreResults.stars_earned
+    closest_miss_summary: {
+        score_progress_ratio: float,       // = ScoreResults.score_progress_ratio
+        score_progress_percent: int,       // = ScoreResults.score_progress_percent
+        // objective-completion dimension: shape TBD (still open — see
+        // Open Questions), composed from this attempt's own objectives_final
+    },
+}
+```
+
+and emits `level_resolved(outcome, results_data)` using this self-assembled
+record — never a value passed through verbatim from Scoring, unlike the
+dropped push model. This drops the previously-proposed
+`ScoreProvider.finalize_results(objectives_resolution: ObjectivesResolution)
+-> ResultsData` seam entirely: Scoring never receives `ObjectivesResolution`
+and never assembles `outcome` or any part of `closest_miss_summary` it has
+no visibility into (`scoring-stars.md` § Detailed Rules 8's declared scope
+boundary). This also resolves `screen-flow.md` §11's `closest_miss_summary`
+seam-ownership attribution exactly as originally declared there (Level
+Objective) — no correction to `screen-flow.md` is needed. **Both
+`get_current_score()` (§ Detailed Rules 3) and `get_score_results()`
+(above) are now formally ratified contracts**, confirmed in
+`scoring-stars.md` § Detailed Rules 10a (Revision 2) — see this document's
+Revision 2 changelog.
 
 **Session pacing decision: end immediately at the objective-completing
 stabilization; no leftover-move play-out at MVP.** When
@@ -737,7 +780,7 @@ immediately before the win screen.
 | Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2) | This depends on it | Subscribes to `board_bootstrapped` (tracker reset, § Detailed Rules 2), `swap_accepted`/`swap_rejected` (move accounting, § Detailed Rules 6), `match_cleared` (progress tracking, §§ Detailed Rules 4–5), `board_reshuffled` (confirms zero effect), and `board_stabilized` (win/lose evaluation, § Detailed Rules 8). Consumes **zero synchronous queries** from Board Engine — this document is purely signal-driven against Board Engine's existing contract, requiring **no new Board Engine API surface**. |
 | Level Data Format (`design/gdd/level-data-format.md`, APPROVED) | This depends on it | Reads `objectives` (array, type, params — normalized per § Detailed Rules 2) and `move_limit` at every bootstrap to initialize trackers and the move counter. This document is the runtime interpreter `level-data-format.md`'s own Dependencies table names: "Reads `objectives` and `move_limit` to drive runtime win/lose evaluation; owns the runtime semantics of each objective type, while [Level Data Format] owns only the data shape." |
 | Special Candies & Combo Matrix (`design/gdd/special-candies.md`, Draft) | **No direct dependency** — zero-coupling by design | Level Objective never calls any Special Candies seam and never subscribes to `special_activated` for tallying purposes (§ Detailed Rules 4 explains why). It depends only on Board Engine's `match_cleared` contract, which Special Candies is itself bound to preserve without modification ("No seam's signature is extended, narrowed, or reinterpreted," `special-candies.md` § Detailed Rules 10). This is the same mechanism Special Candies' own § Detailed Rules 9 (Harvest Observation Point) names as its "zero API changes" guarantee to this document. |
-| Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, being authored in parallel) | This depends on it — one-directional read, per `systems-index.md`'s Circular Dependencies resolution ("Objective reads the live score... Scoring never needs Objective's internal state") | Two proposed synchronous seams: `ScoreProvider.get_current_score() -> int` (§ Detailed Rules 3, continuous use for `score_target` tracking) and `ScoreProvider.finalize_results(objectives_resolution) -> ResultsData` (§ Detailed Rules 9, called once per attempt at resolution). **Reciprocal note**: when authored, Scoring's Dependencies section must list this document and confirm or amend both seam signatures — see Open Questions. |
+| Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, Revised — Revision 2) | This depends on it — one-directional read, per `systems-index.md`'s Circular Dependencies resolution ("Objective reads the live score... Scoring never needs Objective's internal state") | Two ratified synchronous pull seams: `ScoreProvider.get_current_score() -> int` (§ Detailed Rules 3, continuous use for `score_target` tracking) and `ScoreProvider.get_score_results() -> ScoreResults` (§ Detailed Rules 9, called once per attempt at resolution to pull `final_score`/`stars_earned`/`score_progress_ratio`/`score_progress_percent`). **Reciprocal note fulfilled**: `scoring-stars.md` § Detailed Rules 10a lists both signatures; its Dependencies section lists this document. Replaces the previously-proposed `finalize_results()` push seam, dropped in the Revision 2 reconciliation (see changelog). |
 | Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft) | Depended on by it (forward) | Consumes `level_resolved(outcome, results_data)` (T15/T16, driving the Results Win/Lose transition), `objective_progressed` and `moves_remaining_changed` (HUD chip/move-counter live updates), and the `ObjectiveDisplayModel` (§ Detailed Rules 10) for the Pre-Level Card. **This document fulfills the reciprocal note `screen-flow.md` requested**: "when authored, its Dependencies section must list this document and specify exactly how/when it emits `level_resolved`" — answered in § Detailed Rules 8–9. |
 | Booster Brewing Meta (#12, Phase 2, gated, not yet authored) | Depended on by it (forward) | Anticipated to read the same `match_cleared`-derived per-color tally mechanism this document already uses for `collect_color` (per `special-candies.md` § Detailed Rules 9's Harvest Observation Point). `level-data-format.md`'s Open Questions flags whether `collect_color`'s tile-count semantics should formally reconcile with a future ingredient-harvest yield formula — this document's position (§ Detailed Rules 1, 4): they stay **decoupled**. `collect_color` counts raw cleared tiles of a color, full stop; any future yield-multiplier logic (e.g., a Striped clear yielding more ingredient than a plain match) is exclusively Booster Brewing Meta's scope to define on top of the same underlying `match_cleared` event stream, never a change to this document's counting rule. |
 | RNG Service (`design/gdd/rng-service.md`, APPROVED) | No dependency | This document consumes zero randomness — every rule (progress tallying, move accounting, win/lose evaluation) is a pure, deterministic function of already-resolved Board Engine signals and Scoring's live score, mirroring Special Candies & Combo Matrix's own "RNG Usage: None" position (`special-candies.md` § Detailed Rules 8) for the same category of reason: determinism and readability directly serve Pillar 2. |
@@ -786,13 +829,23 @@ immediately before the win screen.
       asserts `level_resolved(WIN, ...)` fires exactly once, at the single
       `board_stabilized` that follows the full cascade, with
       `moves_used == 1`.
-- [ ] A unit test asserts `level_resolved`'s payload construction: given a
-      mock `ScoreProvider.finalize_results()` seam returning a stub
-      `ResultsData`, asserts the emitted `level_resolved` event's second
-      argument is exactly that stub value, and that the
-      `ObjectivesResolution` passed into the seam call correctly reflects
-      every tracker's final `current`/`target_value`/`is_complete` state,
-      `moves_used`, and `moves_remaining`.
+- [ ] A unit test asserts `level_resolved`'s payload construction
+      (Revision 2 — reassigned to the pull/compose boundary): given a mock
+      `ScoreProvider.get_score_results()` seam returning a stub
+      `ScoreResults`, asserts the emitted `level_resolved` event's
+      `ResultsData` argument correctly composes `score_earned`/
+      `stars_earned`/`closest_miss_summary.score_progress_ratio`/
+      `score_progress_percent` from that stub verbatim, `outcome` from this
+      document's own Formula 4 result, and that `objectives_final` (this
+      document's own tracker-derived resolution summary) correctly
+      reflects every tracker's final `current`/`target_value`/
+      `is_complete` state, `moves_used`, and `moves_remaining` — confirming
+      Level Objective, not Scoring, performs the assembly.
+- [ ] A unit test asserts `ScoreProvider.get_current_score()` is queried
+      via a plain synchronous call (never a signal) at every relevant
+      evaluation point (§ Detailed Rules 3, 5), and that a mocked
+      mid-cascade change in its return value is reflected in the very next
+      `objective_progressed` emission for a `score_target` tracker.
 - [ ] A unit test asserts `objective_progressed` emission cadence: a
       3-step cascade clearing the tracked color on steps 1 and 3 (not step
       2) emits exactly two `objective_progressed` events for that tracker,
@@ -833,7 +886,7 @@ immediately before the win screen.
 | `match_cleared`'s deduplicated, unioned `cleared_pieces` payload; `PieceSnapshot`'s deferred-replay sufficiency guarantee | `design/gdd/board-engine.md` | § Detailed Rules 4 (overlap/union rule), § Detailed Rules 7 (Signal Catalog), § Detailed Rules 13 (worked 2-step cascade walkthrough) | Rule dependency — the unified counting rule's formal proof |
 | `board_stabilized`'s "full loop returns to `Idle`" guarantee | `design/gdd/board-engine.md` | § Detailed Rules 6 (Resolution Loop), § Detailed Rules 7 (Signal Catalog) | Rule dependency — the win/lose evaluation-timing proof |
 | No direct seam call into Special Candies; zero-coupling via Board Engine's preserved signal contract | `design/gdd/special-candies.md` | § Detailed Rules 9 (Harvest Observation Point), § Detailed Rules 10 (Seam Implementation Summary — "No seam's signature is extended, narrowed, or reinterpreted") | Rule dependency, confirms zero-coupling |
-| `level_resolved(outcome, results_data)` signature; `ResultsData`'s declared field table; `closest_miss_summary`'s seam-ownership attribution | `design/gdd/screen-flow.md` | §11 Declared Seams; T15/T16 transition table | Ownership handoff — this document fires the event, Scoring populates `ResultsData` |
+| `level_resolved(outcome, results_data)` signature; `ResultsData`'s declared field table; `closest_miss_summary`'s seam-ownership attribution | `design/gdd/screen-flow.md` | §11 Declared Seams; T15/T16 transition table | Ownership handoff — this document fires the event **and assembles the full `ResultsData` record** (Revision 2 reconciliation, § Detailed Rules 9), pulling `score_earned`/`stars_earned`/the score dimension of `closest_miss_summary` from Scoring via the ratified `get_score_results()` seam (`scoring-stars.md` § Detailed Rules 10a). Confirms `screen-flow.md`'s original `closest_miss_summary` attribution to this document — no correction needed there. |
 | `attempt_number` reset/increment policy underlying every tracker-reset instant | `design/gdd/screen-flow.md` | §7 (`attempt_number` supply); `design/gdd/rng-service.md` (attempt-lifecycle policy) | Rule dependency |
 | `LOW_MOVES_THRESHOLD` default value and rationale | `design/art/art-bible.md` | Semantic UI Accents table — "Warning / low moves," `#d97b2e`; Board/HUD States table — "Low-moves warning (≤3 moves, objective incomplete)" | Data dependency — this document's default matches an already-drafted PROPOSED spec exactly |
 | Pillar 2 ("ran out of good moves, never rigged"), Recovery from Failure ("closest miss... educational, not punishing") | `design/gdd/game-concept.md` | Pillar 2 section; Player Journey → Recovery from Failure | Design-intent dependency |
@@ -844,9 +897,9 @@ immediately before the win screen.
 
 | Question | Owner | Deadline | Resolution |
 |----------|-------|----------|-----------|
-| Confirm (or amend) the exact names/signatures of the two proposed Scoring seams: `ScoreProvider.get_current_score() -> int` and `ScoreProvider.finalize_results(objectives_resolution) -> ResultsData`. | systems-designer | At Scoring & Star Thresholds (#6) authoring/review | — |
+| Confirm (or amend) the exact names/signatures of the two proposed Scoring seams: `ScoreProvider.get_current_score() -> int` and `ScoreProvider.finalize_results(objectives_resolution) -> ResultsData`. | systems-designer | At Scoring & Star Thresholds (#6) authoring/review | **Resolved (Revision 2).** `get_current_score() -> int` ratified as proposed. `finalize_results()` dropped; replaced by `get_score_results() -> ScoreResults`, ratified in `scoring-stars.md` § Detailed Rules 10a. See this document's Revision 2 changelog. |
 | Does Scoring & Star Thresholds want an "unused moves" bonus-score formula, given this document ends the level immediately at the objective-completing `board_stabilized` with no leftover-move play-out at MVP (§ Detailed Rules 9)? If so, does it need any additional data from `ObjectivesResolution` beyond `moves_remaining`? | game-designer / systems-designer | At Scoring & Star Thresholds (#6) authoring | — |
-| `screen-flow.md` §11 currently attributes `closest_miss_summary`'s seam ownership to this document ("Level Objective & Move-Limit System (#7)"), while this document positions the underlying *metric* as more naturally Scoring's judgment call (it may need to weigh score-closeness against color-tally-closeness across multiple objective types). This document's resolution: `objectives_final` (inside `ObjectivesResolution`, § Detailed Rules 9) is the sole raw input Scoring's `finalize_results()` seam needs to compose `closest_miss_summary` itself as part of `ResultsData`. Recommend `screen-flow.md`'s seam-owner attribution be corrected to Scoring & Star Thresholds at that document's next revision. | systems-designer | At Scoring & Star Thresholds (#6) authoring, with a follow-up correction to `screen-flow.md` | — |
+| `screen-flow.md` §11 currently attributes `closest_miss_summary`'s seam ownership to this document ("Level Objective & Move-Limit System (#7)"), while this document positions the underlying *metric* as more naturally Scoring's judgment call (it may need to weigh score-closeness against color-tally-closeness across multiple objective types). | systems-designer | At Scoring & Star Thresholds (#6) authoring, with a follow-up correction to `screen-flow.md` | **Resolved (Revision 2).** Level Objective remains `closest_miss_summary`'s sole assembler, composing Scoring's pulled score-progress fields (via `get_score_results()`) with its own objective-completion data (`objectives_final`). `screen-flow.md`'s original attribution to this document is confirmed correct; no correction needed there. See § Detailed Rules 9 and this document's Revision 2 changelog. The exact shape of the objective-completion dimension itself remains a separate, still-open question (see next row). |
 | Blocker-clear and bring-down-ingredient objective types (§ Detailed Rules 11's named-not-designed extension seam) — no concrete design exists yet for either the Board Engine signal source or the `ObjectiveHandler` implementation. | game-designer | Revisit when a dedicated Blockers concept or Level Progression content need is scoped (post-MVP) | — |
 | Should `is_low_moves`'s suppression-on-already-won behavior (Formula 6) extend to a symmetric suppression once `outcome == LOSE` is already determined, or is that moot because `level_resolved` fires in the same instant and the HUD is expected to transition away immediately? | game-designer / UI | At Game UI/Screens Flow's HUD chip visual implementation pass | — |
 | `RECOMMENDED_MAX_OBJECTIVES_PER_LEVEL = 2` is a soft authoring guideline, not schema-enforced. Should `level-data-format.md`'s validation suite (V-rules) eventually gain an Advisory rule mirroring this, the way V18 advises on `star_3_score`? | systems-designer | At Vertical Slice content-authoring retrospective, once real multi-objective levels exist to evaluate against | — |

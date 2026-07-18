@@ -1,13 +1,24 @@
 # Scoring & Star Thresholds
 
-*Status: Reviewed — NEEDS REVISION (lean review, 2026-07-18)*
+*Status: Revised — seam reconciled, awaiting re-review (2026-07-18)*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Progression*
 *Author: systems-designer*
 *Depends On: Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2), Special Candies & Combo Matrix (`design/gdd/special-candies.md`, Draft), Level Data Format (`design/gdd/level-data-format.md`, APPROVED — v1; this document proposes a Tuning Knobs/V18 update, see Cross-References)*
-*Depended On By: Level Objective & Move-Limit System (#7, not yet authored), Juice Layer — VFX & Audio Hooks (#8, not yet authored), Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft — fills its declared `ResultsData` seam), Level Progression / World Map (`design/gdd/world-map.md`, Draft — soft/indirect, reads only persisted `best_stars`), Booster Brewing Meta (#12, Phase 2, gated) (all per `design/gdd/systems-index.md`)*
+*Depended On By: Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, Revised — Revision 2 — pulls this document's ratified Score Query API, § Detailed Rules 10a), Juice Layer — VFX & Audio Hooks (#8, not yet authored), Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft — indirectly contributes to its declared `ResultsData` seam via Level Objective's assembly), Level Progression / World Map (`design/gdd/world-map.md`, Draft — soft/indirect, reads only persisted `best_stars`), Booster Brewing Meta (#12, Phase 2, gated) (all per `design/gdd/systems-index.md`)*
 *Source: `design/gdd/systems-index.md` · `design/gdd/board-engine.md` §§ Detailed Rules 6–7, 13, Formula 5–6 · `design/gdd/special-candies.md` §§ Detailed Rules 1, 5–6, Formulas 1, 4–8 · `design/gdd/level-data-format.md` §2, §4 (V16–V18), Formula A–B · `prototypes/sweet-cascade-concept/REPORT.md` · `design/gdd/screen-flow.md` § Detailed Rules 11 · `design/gdd/game-concept.md` Pillar 2, Flow State Design*
+
+*Revision 2 Changelog (2026-07-18):* Dropped the proposed
+`ScoreProvider.finalize_results()` push seam. Ratified the pull/compose
+model: this document now exposes `get_current_score() -> int` and
+`get_score_results() -> ScoreResults` (§ Detailed Rules 10a); Level
+Objective & Move-Limit System (#7) is the sole `ResultsData` assembler,
+pulling both seams and composing the full record itself. Resolves
+`scoring-stars-review-log.md` Required Before Implementation #1 (blocking
+seam-composition mismatch) and Recommended Revisions #1 (unratified
+`get_current_score()`); mirrored in `level-objectives-review-log.md`
+Required Before Implementation #1 and Recommended Revisions #1.
 
 ---
 
@@ -26,8 +37,9 @@ for any level from its `move_limit` and `color_pool` size, superseding Level
 Data Format's provisional flat `REFERENCE_SCORE_PER_MOVE = 160` constant with
 a value derived per color-pool size (cascade frequency modeled honestly from
 match probability, for the schema-legal 3/4/5-color range); and the
-closest-miss metric and `ResultsData` field contract that fill Game
-UI/Screens Flow's declared seam for the Results Win/Lose screens. Every
+closest-miss metric and Score Query API (§ Detailed Rules 10a) that supply
+Level Objective & Move-Limit System's `ResultsData` assembly for Game
+UI/Screens Flow's declared seam. Every
 formula in this document is a pure, deterministic function of signals Board
 Engine and Special Candies already emit — this document consumes zero RNG
 and reads exactly one signal (`match_cleared`) to compute score. Score
@@ -334,9 +346,11 @@ seam names — that remains Level Objective & Move-Limit System's (#7)
 ownership, since a level's `collect_color` or blocker-clearing objective
 completion (a dimension this document has no visibility into) may need to
 be surfaced alongside, or instead of, the score dimension for some lose
-outcomes (see Edge Cases). This document proposes `score_progress_ratio`/
-`score_progress_percent` as its own contribution to that payload
-(§ Detailed Rules 10), pending #7's ratification of the full shape.
+outcomes (see Edge Cases). This document contributes `score_progress_ratio`/
+`score_progress_percent` to that payload via the ratified Score Query API
+(§ Detailed Rules 10a); Level Objective & Move-Limit System (#7) is the
+ratified sole assembler of the full `closest_miss_summary` (Revision 2 —
+see changelog).
 
 **Why score-to-star-1, not score-to-score-target or objective-completion-
 percent.** `star_1_score` is always defined for every level, regardless of
@@ -369,24 +383,37 @@ sits many orders of magnitude below the 64-bit ceiling — no saturating
 arithmetic, clamping, or overflow-guard logic is required anywhere in this
 document's formulas.
 
-### 10. `ResultsData` — Fields This Document Owns
+### 10. `ScoreResults` — Fields This Document Contributes (Pulled, Not Pushed)
 
 `screen-flow.md` § Detailed Rules 11 declares `ResultsData`'s consumption
 contract and names `stars_earned`, `score_earned`, and
 `closest_miss_summary` as fields this document (Scoring & Star Thresholds)
-supplies. This document now fills that seam precisely:
+contributes. **This document does not assemble or emit `ResultsData`
+itself.** Per the reconciled seam contract (Revision 2 — see changelog),
+Level Objective & Move-Limit System (#7) is the sole `ResultsData`
+assembler: at the resolving `board_stabilized`, it *pulls* this document's
+contributed fields via `get_score_results()` (§ Detailed Rules 10a) and
+composes them, together with its own `outcome` and objective-completion
+data, into the full `ResultsData` record it emits with `level_resolved`.
 
-| Field | Type | Owner | This document's contribution |
+This document's contribution, precisely:
+
+| Field (as delivered via `get_score_results()`) | Type | Maps to `ResultsData` field | This document's contribution |
 |---|---|---|---|
-| `score_earned` | int, `≥ 0` | This document | The attempt's `final_score` (§ Detailed Rules 1) at the instant Level Objective & Move-Limit System (#7) determines the level has resolved. |
-| `stars_earned` | int, `{0,1,2,3}` | This document | Formula 7's star evaluation, applied to `score_earned` against this level's `star_1/2/3_score`. |
-| `closest_miss_summary.score_progress_ratio` | float, `[0.0, 1.0]` | This document (proposed field on a payload #7 owns) | Formula 8's output. |
-| `closest_miss_summary.score_progress_percent` | int, `[0, 100]` | This document (proposed field) | `round(100 × score_progress_ratio)` — a display-ready convenience derived from the same ratio. |
-| `outcome` | enum `{WIN, LOSE}` | Level Objective & Move-Limit System (#7) | Not this document's field — listed for completeness only. |
-| `closest_miss_summary.*` (any objective-completion dimension) | shape TBD | Level Objective & Move-Limit System (#7) | Not this document's field — see § Detailed Rules 8's scope boundary. |
+| `final_score` | int, `≥ 0` | `score_earned` | The attempt's `final_score` (§ Detailed Rules 1) at the instant Level Objective & Move-Limit System (#7) determines the level has resolved. |
+| `stars_earned` | int, `{0,1,2,3}` | `stars_earned` | Formula 7's star evaluation, applied to `final_score` against this level's `star_1/2/3_score`. |
+| `score_progress_ratio` | float, `[0.0, 1.0]` | `closest_miss_summary.score_progress_ratio` | Formula 8's output. |
+| `score_progress_percent` | int, `[0, 100]` | `closest_miss_summary.score_progress_percent` | `round(100 × score_progress_ratio)` — a display-ready convenience derived from the same ratio. |
+
+`outcome` and the objective-completion dimension of `closest_miss_summary`
+are **not** this document's fields — Level Objective & Move-Limit System
+(#7) computes `outcome` from its own win/lose evaluation and composes the
+full `closest_miss_summary` (score dimension pulled from this document,
+objective-completion dimension from its own `objectives_final`), per its
+own § Detailed Rules 9 (Revision 2).
 
 **`is_new_best_score` / a "best-score flag" is deliberately NOT part of
-`ResultsData`.** `screen-flow.md`'s own Formula 6 already derives
+`ScoreResults`.** `screen-flow.md`'s own Formula 6 already derives
 `is_new_best_stars`/`is_new_best_score` from a **pre-attempt snapshot** of
 `get_profile()`, taken before this attempt begins, compared against this
 attempt's `stars_earned`/`score_earned` once resolved — and that document's
@@ -395,18 +422,81 @@ computed elsewhere) is required: by the time any consumer could read a
 "best" comparison, Save & Persistence's monotonic merge may have already
 overwritten the live record with this attempt's result
 (`save-persistence.md` §3). Adding a second, independently-computed
-"best-score flag" to `ResultsData` would risk a second, potentially-drifting
+"best-score flag" to `ScoreResults` would risk a second, potentially-drifting
 source of truth for the same fact Screen Flow already owns correctly. This
-document supplies only the raw `score_earned`/`stars_earned` values Formula
-6 needs as its inputs.
+document exposes only the raw `final_score`/`stars_earned`/
+`score_progress_ratio`/`score_progress_percent` values above.
 
 **Per-objective completion is deliberately NOT part of this document's
-`ResultsData` contribution.** This document has no visibility into
+`ScoreResults` contribution.** This document has no visibility into
 `collect_color` tallies, blocker state, or any other objective-type-specific
 progress — that is Level Objective & Move-Limit System's (#7) exclusive
 scope, exactly the same "Scoring surface boundary" `world-map.md` § Detailed
 Rules 3 already draws when describing its own read-only relationship to this
 document's eventual output.
+
+### 10a. Score Query API — The Ratified Pull Interface
+
+**This document exposes exactly two synchronous, read-only query seams —
+never signals, never a push-style "finalize" call — that Level Objective &
+Move-Limit System (#7) pulls from.** Both are formally ratified by this
+revision (Revision 2), resolving the advisory gap this document's own
+review log flagged (`scoring-stars-review-log.md`, Recommended Revisions
+#1) and the mirrored gap in `level-objectives-review-log.md`.
+
+```
+ScoreProvider.get_current_score() -> int
+```
+
+Always returns the exact live, authoritative running `final_score` total
+(§ Detailed Rules 1) at the instant it is called — never a cached or stale
+copy. Matches `level-objectives.md` § Detailed Rules 3's already-proposed
+name and signature exactly; used for continuous `score_target` objective
+tracking throughout play.
+
+```
+ScoreProvider.get_score_results() -> ScoreResults
+
+ScoreResults = {
+    final_score: int,              // ≥ 0 — this attempt's final_score (§ Detailed Rules 1)
+    stars_earned: int,              // {0,1,2,3} — Formula 7
+    score_progress_ratio: float,    // [0.0, 1.0] — Formula 8
+    score_progress_percent: int,    // [0, 100] — Formula 8
+}
+```
+
+Called exactly once, at the resolving `board_stabilized`, by Level
+Objective & Move-Limit System (#7) as its sole means of pulling this
+document's contributed `ResultsData` fields (§ Detailed Rules 10) —
+replacing the previously-proposed `ScoreProvider.finalize_results(
+objectives_resolution) -> ResultsData` push seam, which this document
+never implemented and which would have required Scoring to assemble
+fields (`outcome`, the objective-completion dimension of
+`closest_miss_summary`) it has no visibility into (§ Detailed Rules 8).
+`ScoreResults` is a plain data struct scoped entirely to fields this
+document owns and computes; it carries no knowledge of `ResultsData`'s
+full shape, `ObjectivesResolution`, or any Level Objective-owned data —
+Scoring remains fully unaware of Level Objective's internal state,
+preserving the one-directional read `systems-index.md`'s Circular
+Dependencies section requires.
+
+| Symbol | Type | Range | Description |
+|---|---|---|---|
+| `get_current_score()` return value | int | `≥ 0` | Live running `final_score`. |
+| `get_score_results()` return value | `ScoreResults` | struct, fields above | This attempt's finalized score-side contribution to `ResultsData`; valid to call any time at or after the resolving `board_stabilized`, since `final_score` is always complete by then (§ Detailed Rules 4). |
+
+**Output range**: `get_current_score()` — unbounded non-negative int, per
+Formula 2/9. `get_score_results()` — a fixed-shape struct whose fields are
+individually bounded exactly as Formulas 7 and 8 already bound them.
+
+**Worked example**: mid-cascade, `get_current_score()` called after the
+first of a 2-step cascade returns `60` (Formula 2 Worked Example A's first
+step); called again after the second step returns `180`. At the resolving
+`board_stabilized` for a level with thresholds `2,500/3,200/3,900` and a
+final `final_score = 2,100`, `get_score_results()` returns `{final_score:
+2100, stars_earned: 0, score_progress_ratio: 0.84,
+score_progress_percent: 84}` — reproducing Formula 8's worked example
+exactly, now packaged as the pulled struct.
 
 ---
 
@@ -832,9 +922,9 @@ required anywhere in this document's implementation (§ Detailed Rules 9).
 | Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2) | Scoring depends on it | Consumes exactly one signal, `match_cleared` (`chain_index`, `cleared_pieces`, `trigger_source`), as the sole input to Formula 2 (§ Detailed Rules 1). Also inherits `MAX_CASCADE_DEPTH` and `max_cells_per_step` (Formula 5) unmodified as the basis for this document's own anti-inflation bound (Formula 9) — no independent cap is declared. **This document fulfills the reciprocal note requested in `board-engine.md`'s Dependencies table** ("when authored, its Dependencies section must list this document"). |
 | Special Candies & Combo Matrix (`design/gdd/special-candies.md`, Draft) | Scoring depends on it | Consumes the `special_type` vocabulary (`SPECIAL_NONE`, `STRIPE_H`, `STRIPE_V`, `COLOR_BOMB`, § Detailed Rules 1) as the domain of Formula 2's `activation_bonus` function, and cross-validates Formula 3's derived combo table against that document's combo matrix (§ Detailed Rules 5) and passive chain rules (§ Detailed Rules 6). Reads no signal from Special Candies directly — every combo/passive-catch effect is already fully reflected in Board Engine's own `match_cleared.cleared_pieces` (§ Detailed Rules 2). **This document fulfills the reciprocal note requested in `special-candies.md`'s Dependencies table.** |
 | Level Data Format (`design/gdd/level-data-format.md`, APPROVED — v1) | Mutual — Scoring depends on it, and formally supersedes one of its provisional values | Reads `move_limit`, `color_pool` (size), and the presence/value of a `score_target` objective (Formula 5, 6). **Supersedes** the provisional `REFERENCE_SCORE_PER_MOVE` constant and Formula A (`level-data-format.md`'s own explicit deferral: "owned authoritatively by Scoring & Star Thresholds (#6) once written, at which point it should reconcile with or supersede these values") with Formula 4/5 of this document. Recommends (does not make) an update to that document's Tuning Knobs table and V18's status — see Cross-References; not edited here, per this document's own file-edit scope. |
-| Level Objective & Move-Limit System (#7, not yet authored) | Will depend on Scoring | Expected to read `final_score`/`stars_earned` (via this document's Formula 2/7) to evaluate `score_target` objective completion and to trigger end-of-level star evaluation — the one-directional read `systems-index.md`'s Circular Dependencies section already resolves ("Scoring never needs Objective's internal state"). Also expected to compose this document's `score_progress_ratio` (Formula 8) with its own objective-completion data into the final `closest_miss_summary` shape (§ Detailed Rules 8, 10). **Reciprocal note**: when authored, its Dependencies section must list this document. |
+| Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, Revised — Revision 2) | Depends on Scoring | Reads `final_score` continuously via `get_current_score()` (§ Detailed Rules 10a) to evaluate `score_target` objective completion, and pulls `final_score`/`stars_earned`/`score_progress_ratio`/`score_progress_percent` once via `get_score_results()` (§ Detailed Rules 10a) at the resolving `board_stabilized` — the one-directional read `systems-index.md`'s Circular Dependencies section already resolves ("Scoring never needs Objective's internal state"). Level Objective is the sole `ResultsData` assembler, composing these pulled fields with its own `outcome` and objective-completion data into the final `closest_miss_summary` and `ResultsData` (Revision 2 reconciliation — see changelog). **Reciprocal note fulfilled**: `level-objectives.md`'s Dependencies section lists this document and confirms both seam signatures. |
 | Juice Layer — VFX & Audio Hooks (#8, not yet authored) | Will depend on Scoring | Expected to render floating score popups using exactly this document's `step_score` (Formula 2) per `match_cleared` event, and to pace the HUD's counting-up display independently of this document's logical accrual timing (§ Detailed Rules 4) — mirroring `board-engine.md` § Detailed Rules 13's identical logic/presentation split. **Reciprocal note**: when authored, its Dependencies section must list this document. |
-| Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft) | Mutual | Fills that document's declared `ResultsData` seam with `score_earned`, `stars_earned`, and a proposed `closest_miss_summary.score_progress_ratio`/`score_progress_percent` (§ Detailed Rules 10). Also supplies the raw inputs `screen-flow.md`'s own Formula 6 (`is_new_best_stars`/`is_new_best_score`) needs — this document deliberately does not duplicate that comparison itself (§ Detailed Rules 10). **This document fulfills the reciprocal note requested in `screen-flow.md`'s Dependencies table.** |
+| Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft) | Mutual, indirect | Contributes `score_earned`/`stars_earned`/`closest_miss_summary.score_progress_ratio`/`score_progress_percent` to that document's declared `ResultsData` seam (§ Detailed Rules 11) — but only indirectly, via `get_score_results()` (§ Detailed Rules 10a), since Level Objective & Move-Limit System (#7), not this document, assembles and emits the actual `ResultsData` record (Revision 2 reconciliation). Also supplies the raw inputs `screen-flow.md`'s own Formula 6 (`is_new_best_stars`/`is_new_best_score`) needs — this document deliberately does not duplicate that comparison itself (§ Detailed Rules 10). **This document fulfills the reciprocal note requested in `screen-flow.md`'s Dependencies table.** |
 | Level Progression / World Map (`design/gdd/world-map.md`, Draft) | It depends on this document (soft, indirect) | Consumes only the already-persisted `best_stars` (0–3) integer this document's output eventually feeds, via Save & Persistence — never this document's internal formula, per that document's own explicitly-stated "Scoring surface boundary" (`world-map.md` § Detailed Rules 3). This document adds no new obligation beyond confirming that boundary holds. |
 | Booster Brewing Meta (#12, Phase 2, gated) | It depends on this document (named, not designed) | Anticipated to read per-color `cleared_pieces` tallies directly from Board Engine's `match_cleared` payload (the same Harvest Observation Point `special-candies.md` § Detailed Rules 9 names) — **never** this document's score formula. This document defines no ingredient/harvest-specific scoring variant; that boundary is logged explicitly as an Open Question for #12's eventual authoring. |
 | RNG Service (`design/gdd/rng-service.md`, APPROVED) | Explicitly **not** a dependency | Every formula in this document is a pure, deterministic function of already-resolved board events — zero RNG streams are consumed, mirroring `special-candies.md` § Detailed Rules 8's identical "RNG Usage: None" stance and its own explicit justification (determinism directly serves Pillar 2). |
@@ -949,23 +1039,34 @@ rule; deterministic, no live RNG — tests live under
       "RNG Usage: None" claim (mirrors `special-candies.md`'s own identical
       test).
 
-**`ResultsData` construction (BLOCKING, `tests/unit/scoring-stars/`):**
+**`ScoreResults` construction and Score Query API (BLOCKING,
+`tests/unit/scoring-stars/`) — reassigned to the § Detailed Rules 10a
+pull-seam boundary (Revision 2):**
 
-- [ ] `test_results_data_score_earned_matches_final_score`:
-      `ResultsData.score_earned` equals the exact `final_score` this
+- [ ] `test_get_score_results_final_score_matches_final_score`:
+      `get_score_results().final_score` equals the exact `final_score` this
       document's Formula 2 accumulated for the attempt.
-- [ ] `test_results_data_stars_earned_matches_formula_7`:
-      `ResultsData.stars_earned` equals Formula 7's output for that same
-      `score_earned` against the level's authored thresholds.
-- [ ] `test_results_data_closest_miss_score_progress_fields`:
-      `ResultsData.closest_miss_summary.score_progress_ratio`/
-      `score_progress_percent` match Formula 8's output exactly for a
-      LOSE-outcome fixture.
-- [ ] `test_results_data_never_includes_best_score_flag`: interface
-      inspection confirms this document's `ResultsData` contribution
-      contains no `is_new_best_score`/`is_new_best_stars`-equivalent field
-      — confirming § Detailed Rules 10's deliberate omission holds in
-      implementation, not only in the design doc.
+- [ ] `test_get_score_results_stars_earned_matches_formula_7`:
+      `get_score_results().stars_earned` equals Formula 7's output for that
+      same `final_score` against the level's authored thresholds.
+- [ ] `test_get_score_results_closest_miss_score_progress_fields`:
+      `get_score_results().score_progress_ratio`/`score_progress_percent`
+      match Formula 8's output exactly for a LOSE-outcome fixture.
+- [ ] `test_get_score_results_never_includes_best_score_flag`: interface
+      inspection confirms `ScoreResults` contains no
+      `is_new_best_score`/`is_new_best_stars`-equivalent field — confirming
+      § Detailed Rules 10's deliberate omission holds in implementation,
+      not only in the design doc.
+- [ ] `test_get_current_score_returns_live_running_total`:
+      `get_current_score()` called mid-cascade (between two `match_cleared`
+      events of the same move) returns the exact `final_score` accumulated
+      so far, never a value cached from before the most recent
+      `match_cleared`.
+- [ ] `test_scoring_never_receives_objectives_resolution`: interface
+      inspection confirms this document exposes no seam accepting an
+      `ObjectivesResolution`-shaped parameter (i.e., `finalize_results()`
+      does not exist in this document's implementation) — confirming the
+      dropped push seam is fully absent, not merely undocumented.
 
 **Manual/QA walkthrough** (`production/qa/evidence/`, ADVISORY per
 `coding-standards.md`'s Visual/Feel and Config/Data tiers):
@@ -999,7 +1100,7 @@ rule; deterministic, no live RNG — tests live under
 | V18's Advisory-vs-Blocking status | `design/gdd/level-data-format.md` | §4 Validation Contract, V18; Open Questions table | This document recommends V18 **remain Advisory**, not be promoted to Blocking, because `reference_max_score` (Formula 5) is an explicitly heuristic, top-down calibration aid — not a hard combinatorial achievability bound — and promoting a heuristic sanity check to a hard gate risks false-positive rejection of legitimately-tuned levels once real telemetry diverges from the model. Resolves that document's own open question on this point (see Open Questions). |
 | `special_type` vocabulary and combo-matrix definitions | `design/gdd/special-candies.md` | § Detailed Rules 1 (roster), § Detailed Rules 5 (combo matrix), § Detailed Rules 6 (passive chain rules), Formulas 4–8 | Formula 2's `activation_bonus` domain and Formula 3's derived combo table are built directly on this document's already-fixed vocabulary and combo definitions; no changes requested. |
 | `match_cleared` signal payload (`chain_index`, `cleared_pieces`, `trigger_source`) | `design/gdd/board-engine.md` | § Detailed Rules 7 (Signal Catalog), § Detailed Rules 13 (Logic/Presentation Boundary) | This document's sole scoring input (§ Detailed Rules 1); no schema change requested. |
-| `ResultsData` seam (`score_earned`, `stars_earned`, `closest_miss_summary`) | `design/gdd/screen-flow.md` | § Detailed Rules 11, Declared Seams | This document fills the seam per § Detailed Rules 10 of this document; the full `closest_miss_summary` shape remains pending Level Objective & Move-Limit System's (#7) ratification. |
+| `ResultsData` seam (`score_earned`, `stars_earned`, `closest_miss_summary`) | `design/gdd/screen-flow.md` | § Detailed Rules 11, Declared Seams | This document contributes `score_earned`/`stars_earned`/`closest_miss_summary.score_progress_ratio`/`score_progress_percent` via the ratified `get_score_results()` pull seam (§ Detailed Rules 10a); Level Objective & Move-Limit System (#7) is the sole `ResultsData` assembler (Revision 2 reconciliation, see changelog) and owns the full `closest_miss_summary`. |
 | `best_stars` read-only consumption boundary | `design/gdd/world-map.md` | § Detailed Rules 3, "Scoring surface boundary" | Confirmed compatible — this document adds no new obligation on that boundary. |
 | `TILE_BASE_VALUE=20`, linear chain multiplier, `REFERENCE_SCORE_PER_MOVE(5)=160` empirical anchor | `prototypes/sweet-cascade-concept/REPORT.md` | "If Proceeding" section (tuning values), Lessons Learned (special-×-special chains) | Data dependency (prototype, not a GDD) — cited as design rationale throughout Detailed Rules and Formulas. |
 
@@ -1014,6 +1115,6 @@ rule; deterministic, no live RNG — tests live under
 | Is `REFERENCE_SCORE_PER_MOVE(K)`'s top-down, coincidental-cascade-only derivation (Formula 4) worth replacing with a bottom-up empirical average — actually simulating/playtesting Formula 2 (including its Activation Bonus terms, which the coincidental model does not attempt to capture) across many real games at each `K` — once Vertical Slice levels exist? | systems-designer | At Vertical Slice, once real play data exists (mirrors the identical open item `board-engine.md` Formula 6 and `special-candies.md` Formula 9 both already flag for their own heuristics) | — |
 | Should `CHAIN_MULTIPLIER_CAP` ever be enabled (switching from `LINEAR` to `CAPPED_LINEAR`), if Vertical Slice telemetry reveals real top-end score inflation `MAX_CASCADE_DEPTH`'s own bound (Formula 9) doesn't adequately address? | game-designer / creative-director | At Vertical Slice, once real in-engine cascade-depth telemetry exists | — |
 | Should a move-remaining end bonus be added once Level Objective & Move-Limit System (#7) is authored, and if so, should it be a new formula #7 owns and calls into this document's constants for, or a full extension to this document's own Formula 2? | game-designer (with systems-designer) | At Level Objective & Move-Limit System (#7) authoring | — |
-| What is the final, ratified shape of `closest_miss_summary` beyond this document's `score_progress_ratio`/`score_progress_percent` contribution — specifically, how should an objective-completion dimension be composed alongside the score dimension for the edge case where score already met `star_1_score` but the level still lost on an unmet non-score objective? | game-designer / systems-designer | At Level Objective & Move-Limit System (#7) authoring | — |
+| What is the final, ratified shape of `closest_miss_summary` beyond this document's `score_progress_ratio`/`score_progress_percent` contribution — specifically, how should an objective-completion dimension be composed alongside the score dimension for the edge case where score already met `star_1_score` but the level still lost on an unmet non-score objective? | game-designer / systems-designer | At Level Objective & Move-Limit System (#7) authoring | **Partially resolved (Revision 2)**: ownership is settled — Level Objective & Move-Limit System (#7) is the sole `ResultsData`/`closest_miss_summary` assembler, composing this document's pulled `score_progress_ratio`/`score_progress_percent` (`get_score_results()`, § Detailed Rules 10a) alongside its own objective-completion data. The exact shape of that objective-completion dimension remains open — see `level-objectives.md`'s own Open Questions. |
 | Should `STRIPE_ACTIVATION_BONUS`:`COLOR_BOMB_ACTIVATION_BONUS`'s fixed `3:1` ratio be validated or recalibrated once Vertical Slice provides real player score-feel data, rather than the current order-of-magnitude reasoning (setup-cost/rarity proxy)? | game-designer | At Vertical Slice, once real in-engine feel data exists | — |
 | Does Booster Brewing Meta (#12, Phase 2, gated) ever need a distinct, brewing-specific score signal from this document (e.g., an ingredient-yield-weighted variant), or does it remain fully independent — reading only raw `cleared_pieces` color tallies directly from Board Engine, never this document's point formula? | game-designer / economy-designer | At Booster Brewing Meta (#12) authoring, once the friction prototype gate is passed | — |
