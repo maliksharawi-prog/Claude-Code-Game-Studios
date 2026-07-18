@@ -132,27 +132,73 @@
 
 <svg width="0" height="0" style="position:absolute">
 <defs>
-  <radialGradient id="g-c0" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#ffb6c1"/><stop offset="45%" stop-color="#ff5d73"/><stop offset="100%" stop-color="#d63c55"/></radialGradient>
-  <radialGradient id="g-c1" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#ffd9a8"/><stop offset="45%" stop-color="#ff9f45"/><stop offset="100%" stop-color="#e07f28"/></radialGradient>
-  <radialGradient id="g-c2" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#fff2ad"/><stop offset="45%" stop-color="#ffd93d"/><stop offset="100%" stop-color="#e0b91e"/></radialGradient>
-  <radialGradient id="g-c3" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#c2f5b0"/><stop offset="45%" stop-color="#7ddf64"/><stop offset="100%" stop-color="#57bf42"/></radialGradient>
-  <radialGradient id="g-c4" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#dcc0f7"/><stop offset="45%" stop-color="#b47aea"/><stop offset="100%" stop-color="#8f54cc"/></radialGradient>
+  <radialGradient id="g-c0" cx="38%" cy="30%" r="80%"><stop offset="0%" stop-color="#ff9fae"/><stop offset="50%" stop-color="#ff5d73"/><stop offset="100%" stop-color="#d63c55"/></radialGradient>
+  <radialGradient id="g-c1" cx="38%" cy="32%" r="80%"><stop offset="0%" stop-color="#ffd9a8"/><stop offset="55%" stop-color="#ff9f45"/><stop offset="100%" stop-color="#e07f28"/></radialGradient>
+  <radialGradient id="g-c2" cx="38%" cy="32%" r="80%"><stop offset="0%" stop-color="#fff2ad"/><stop offset="50%" stop-color="#ffd93d"/><stop offset="100%" stop-color="#e0b91e"/></radialGradient>
+  <radialGradient id="g-c3" cx="38%" cy="30%" r="80%"><stop offset="0%" stop-color="#c2f5b0"/><stop offset="50%" stop-color="#7ddf64"/><stop offset="100%" stop-color="#57bf42"/></radialGradient>
+  <radialGradient id="g-c4" cx="38%" cy="32%" r="75%"><stop offset="0%" stop-color="#dcc0f7"/><stop offset="50%" stop-color="#b47aea"/><stop offset="100%" stop-color="#8f54cc"/></radialGradient>
   <radialGradient id="g-bomb" cx="35%" cy="30%" r="80%"><stop offset="0%" stop-color="#4a4a6a"/><stop offset="100%" stop-color="#17172b"/></radialGradient>
   <radialGradient id="g-fizz" cx="40%" cy="32%" r="75%"><stop offset="0%" stop-color="#fffdf0"/><stop offset="45%" stop-color="#fff4b8"/><stop offset="100%" stop-color="#ffd93d"/></radialGradient>
 
-  <g id="candy-0"><circle cx="50" cy="50" r="42" fill="url(#g-c0)"/>
-    <ellipse cx="36" cy="32" rx="16" ry="10" fill="#fff" opacity=".55" transform="rotate(-25 36 32)"/><circle cx="62" cy="24" r="4" fill="#fff" opacity=".8"/></g>
-  <g id="candy-1"><path d="M50 8 L86 29 L86 71 L50 92 L14 71 L14 29 Z" fill="url(#g-c1)" stroke="url(#g-c1)" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M38 24 L58 16" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".55"/><circle cx="68" cy="22" r="4" fill="#fff" opacity=".8"/></g>
-  <g id="candy-2"><path d="M50 8 Q63 37 92 50 Q63 63 50 92 Q37 63 8 50 Q37 37 50 8 Z" fill="url(#g-c2)" stroke="url(#g-c2)" stroke-width="8" stroke-linejoin="round"/>
-    <path d="M43 26 L52 18" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".6"/><circle cx="59" cy="30" r="3.5" fill="#fff" opacity=".8"/></g>
-  <g id="candy-3"><rect x="12" y="12" width="76" height="76" rx="22" fill="url(#g-c3)"/>
-    <ellipse cx="34" cy="30" rx="14" ry="9" fill="#fff" opacity=".55" transform="rotate(-20 34 30)"/><circle cx="60" cy="24" r="4" fill="#fff" opacity=".8"/></g>
-  <g id="candy-4"><path d="M50 10 A14 14 0 0 1 76 20 A14 14 0 0 1 88 46 A14 14 0 0 1 76 74 A14 14 0 0 1 50 88 A14 14 0 0 1 24 74 A14 14 0 0 1 12 46 A14 14 0 0 1 24 20 A14 14 0 0 1 50 10 Z"
-      fill="url(#g-c4)" stroke="url(#g-c4)" stroke-width="4" stroke-linejoin="round"/>
-    <ellipse cx="37" cy="30" rx="13" ry="8" fill="#fff" opacity=".55" transform="rotate(-25 37 30)"/><circle cx="60" cy="24" r="4" fill="#fff" opacity=".8"/></g>
-  <g id="stripes-h"><g opacity=".85" fill="#fff8ef"><rect x="12" y="27" width="76" height="8" rx="4"/><rect x="12" y="46" width="76" height="8" rx="4"/><rect x="12" y="65" width="76" height="8" rx="4"/></g></g>
-  <g id="stripes-v"><g opacity=".85" fill="#fff8ef"><rect x="27" y="12" width="8" height="76" rx="4"/><rect x="46" y="12" width="8" height="76" rx="4"/><rect x="65" y="12" width="8" height="76" rx="4"/></g></g>
+  <!-- Fruit roster (founder direction 2026-07-18): strawberry, orange slice, lemon, apple, grape bunch -->
+  <g id="candy-0">
+    <path id="body-0" d="M50 24 C36 14 14 22 16 44 C18 66 38 84 50 92 C62 84 82 66 84 44 C86 22 64 14 50 24 Z" fill="url(#g-c0)"/>
+    <path d="M50 22 C44 12 38 10 30 12 C38 16 40 20 41 25 Z" fill="#57bf42"/>
+    <path d="M50 22 C56 12 62 10 70 12 C62 16 60 20 59 25 Z" fill="#57bf42"/>
+    <path d="M50 20 C48 12 50 8 50 6 C52 10 53 14 52 20 Z" fill="#469a35"/>
+    <ellipse cx="35" cy="38" rx="12" ry="8" fill="#fff" opacity=".5" transform="rotate(-28 35 38)"/>
+    <g fill="#ffe3e8" opacity=".85">
+      <ellipse cx="35" cy="56" rx="2.2" ry="3"/><ellipse cx="50" cy="50" rx="2.2" ry="3"/><ellipse cx="65" cy="56" rx="2.2" ry="3"/>
+      <ellipse cx="42" cy="70" rx="2.2" ry="3"/><ellipse cx="58" cy="70" rx="2.2" ry="3"/><ellipse cx="50" cy="82" rx="2" ry="2.6"/>
+    </g>
+  </g>
+  <clipPath id="clip-0"><use href="#body-0"/></clipPath>
+  <g id="candy-1">
+    <circle id="body-1" cx="50" cy="50" r="41" fill="url(#g-c1)"/>
+    <circle cx="50" cy="50" r="34" fill="#ffd9a8"/>
+    <g fill="#ff9f45">
+      <path d="M50 50 L50 19 A31 31 0 0 1 77 35 Z"/><path d="M50 50 L77 35 A31 31 0 0 1 77 66 Z"/>
+      <path d="M50 50 L77 66 A31 31 0 0 1 50 81 Z"/><path d="M50 50 L50 81 A31 31 0 0 1 23 66 Z"/>
+      <path d="M50 50 L23 66 A31 31 0 0 1 23 35 Z"/><path d="M50 50 L23 35 A31 31 0 0 1 50 19 Z"/>
+    </g>
+    <circle cx="50" cy="50" r="4" fill="#ffd9a8"/>
+    <ellipse cx="36" cy="30" rx="11" ry="7" fill="#fff" opacity=".55" transform="rotate(-25 36 30)"/>
+  </g>
+  <clipPath id="clip-1"><use href="#body-1"/></clipPath>
+  <g id="candy-2">
+    <path id="body-2" d="M14 50 C14 32 30 22 50 22 C70 22 86 32 86 50 C86 68 70 78 50 78 C30 78 14 68 14 50 Z M8 50 C10 46 14 46 16 50 C14 54 10 54 8 50 Z M92 50 C90 46 86 46 84 50 C86 54 90 54 92 50 Z" fill="url(#g-c2)"/>
+    <path d="M10 50 C12 47 14 47 15 50 C14 53 12 53 10 50 Z" fill="#e0b91e"/>
+    <path d="M90 50 C88 47 86 47 85 50 C86 53 88 53 90 50 Z" fill="#e0b91e"/>
+    <ellipse cx="36" cy="36" rx="13" ry="7" fill="#fff" opacity=".55" transform="rotate(-18 36 36)"/>
+    <circle cx="60" cy="30" r="3.5" fill="#fff" opacity=".8"/>
+  </g>
+  <clipPath id="clip-2"><use href="#body-2"/></clipPath>
+  <g id="candy-3">
+    <path id="body-3" d="M50 26 C40 16 18 20 16 44 C15 62 30 84 42 86 C46 87 48 84 50 84 C52 84 54 87 58 86 C70 84 85 62 84 44 C82 20 60 16 50 26 Z" fill="url(#g-c3)"/>
+    <path d="M50 26 C49 18 51 12 54 8" stroke="#8a5a2b" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M54 14 C62 8 72 10 76 14 C70 20 60 20 54 14 Z" fill="#57bf42"/>
+    <ellipse cx="34" cy="40" rx="12" ry="8" fill="#fff" opacity=".55" transform="rotate(-25 34 40)"/>
+    <circle cx="60" cy="32" r="4" fill="#fff" opacity=".75"/>
+  </g>
+  <clipPath id="clip-3"><use href="#body-3"/></clipPath>
+  <g id="candy-4">
+    <path d="M50 18 C49 12 51 8 54 5" stroke="#8a5a2b" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <g>
+      <circle cx="36" cy="30" r="15" fill="url(#g-c4)"/><circle cx="64" cy="30" r="15" fill="url(#g-c4)"/>
+      <circle cx="22" cy="52" r="15" fill="url(#g-c4)"/><circle cx="50" cy="52" r="16" fill="url(#g-c4)"/><circle cx="78" cy="52" r="15" fill="url(#g-c4)"/>
+      <circle cx="36" cy="74" r="15" fill="url(#g-c4)"/><circle cx="64" cy="74" r="15" fill="url(#g-c4)"/>
+      <circle cx="50" cy="90" r="13" fill="url(#g-c4)"/>
+    </g>
+    <ellipse cx="30" cy="26" rx="7" ry="4.5" fill="#fff" opacity=".6" transform="rotate(-25 30 26)"/>
+    <circle cx="46" cy="46" r="4" fill="#fff" opacity=".5"/>
+  </g>
+  <clipPath id="clip-4">
+    <circle cx="36" cy="30" r="15"/><circle cx="64" cy="30" r="15"/>
+    <circle cx="22" cy="52" r="15"/><circle cx="50" cy="52" r="16"/><circle cx="78" cy="52" r="15"/>
+    <circle cx="36" cy="74" r="15"/><circle cx="64" cy="74" r="15"/><circle cx="50" cy="90" r="13"/>
+  </clipPath>
+  <g id="stripes-h"><g opacity=".9" fill="#fff8ef"><rect x="4" y="27" width="92" height="8" rx="4"/><rect x="4" y="46" width="92" height="8" rx="4"/><rect x="4" y="65" width="92" height="8" rx="4"/></g></g>
+  <g id="stripes-v"><g opacity=".9" fill="#fff8ef"><rect x="27" y="4" width="8" height="92" rx="4"/><rect x="46" y="4" width="8" height="92" rx="4"/><rect x="65" y="4" width="8" height="92" rx="4"/></g></g>
   <g id="candy-bomb"><circle cx="50" cy="50" r="42" fill="url(#g-bomb)"/>
     <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="2" opacity=".35"/>
     <circle cx="50" cy="20" r="6" fill="#ff5d73"/><circle cx="76" cy="35" r="6" fill="#ff9f45"/><circle cx="76" cy="65" r="6" fill="#ffd93d"/>
@@ -320,8 +366,8 @@ function updateTileArt(t){
   if(t.special===SPECIAL.BOMB) inner='<use href="#candy-bomb"/>';
   else{
     inner=`<use href="#candy-${t.color}"/>`;
-    if(t.special===SPECIAL.STRIPE_H) inner+='<use href="#stripes-h"/>';
-    if(t.special===SPECIAL.STRIPE_V) inner+='<use href="#stripes-v"/>';
+    if(t.special===SPECIAL.STRIPE_H) inner+=`<g clip-path="url(#clip-${t.color})"><use href="#stripes-h"/></g>`;
+    if(t.special===SPECIAL.STRIPE_V) inner+=`<g clip-path="url(#clip-${t.color})"><use href="#stripes-v"/></g>`;
   }
   t.el.innerHTML=`<svg viewBox="0 0 100 100">${inner}</svg>`;
 }

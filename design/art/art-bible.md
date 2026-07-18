@@ -67,11 +67,11 @@ readable at arm's length, it doesn't belong in Sweet Cascade.*
 
 | Name | Hex | Usage |
 | ---- | --- | ----- |
-| Candy — Strawberry Red | `#ff5d73` | Candy type 1 (circle/gumdrop shape) |
-| Candy — Citrus Orange | `#ff9f45` | Candy type 2 (hexagon/segment shape) |
-| Candy — Lemon Yellow | `#ffd93d` | Candy type 3 (diamond/twist shape); also root of the Gold Reward family |
-| Candy — Apple Green | `#7ddf64` | Candy type 4 (rounded-square/chew-cube shape) |
-| Candy — Grape Purple | `#b47aea` | Candy type 5 (6-petal scallop/button shape) |
+| Candy — Strawberry Red | `#ff5d73` | Candy type 1 (strawberry — heart-shaped berry with calyx crown) |
+| Candy — Citrus Orange | `#ff9f45` | Candy type 2 (orange slice — segmented cross-section) |
+| Candy — Lemon Yellow | `#ffd93d` | Candy type 3 (lemon — pointed oval); also root of the Gold Reward family |
+| Candy — Apple Green | `#7ddf64` | Candy type 4 (apple — lobed round with stem + leaf) |
+| Candy — Grape Purple | `#b47aea` | Candy type 5 (grape bunch — berry cluster) |
 | CTA Red (UI) | `#e63950` | Primary buttons / confirm actions — a deepened derivative of Strawberry Red, never an exact match (see UI palette divergence rule below) |
 | Hub Gradient — Royal Purple | `#7b2ff7` | Region 1 (Candy Kingdom Hub) background gradient, stop 1 |
 | Hub Gradient — Magenta Pop | `#f107a3` | Region 1 background gradient, stop 2; also Region 1 UI trim/accent |
@@ -244,14 +244,23 @@ before final art.)*
 
 | Candy | Hex | Shape | Silhouette Notes |
 | ----- | --- | ----- | ----------------- |
-| Strawberry Red | `#ff5d73` | Circle (gumdrop) | Smooth, no corners — the "roundest" piece on the board; single dome highlight |
-| Citrus Orange | `#ff9f45` | Hexagon (segment) | 6 softly rounded corners; faint radial segment lines |
-| Lemon Yellow | `#ffd93d` | Diamond / rotated square (twist) | 4 points, slightly pinched waist like a wrapped hard candy |
-| Apple Green | `#7ddf64` | Rounded square (chew cube) | Soft 90° corners; slight jelly wobble in idle animation |
-| Grape Purple | `#b47aea` | 6-petal scallop (button) | Only piece with a scalloped/wavy outline — most visually distinct silhouette on the board |
+| Strawberry Red | `#ff5d73` | Strawberry (heart-shaped berry) | Leafy green calyx crown + pale seed dots; tapers to a bottom point |
+| Citrus Orange | `#ff9f45` | Orange slice (cross-section) | Visible pith ring + 6 radial wedge segments — reads as a slice even in grayscale |
+| Lemon Yellow | `#ffd93d` | Lemon (pointed oval) | Horizontal oval with two end nubs; deliberately NOT star-like (avoids Gold Reward collision) |
+| Apple Green | `#7ddf64` | Apple (lobed round) | Top dimple with brown stem + single leaf; slight double-lobe bottom |
+| Grape Purple | `#b47aea` | Grape bunch (berry cluster) | Bumpy multi-circle outline + tiny stem — most distinct silhouette on the board |
 
 Each type is double-coded by shape AND color so the roster remains
 colorblind-accessible without relying on hue recognition alone.
+
+> **Founder direction (2026-07-18): fruits, not abstract candy shapes.**
+> The original roster used abstract confectionery silhouettes (circle /
+> hexagon / diamond / rounded-square / scallop). The founder reviewed the
+> playable slice and directed recognizable fruit forms instead. Fruit
+> silhouettes strengthen the shape+color double-coding (all five remain
+> distinct in grayscale). The glossy "patisserie glass" finish rules are
+> unchanged and apply to the fruit forms. The pending colorblind-simulation
+> pass now applies to the FRUIT silhouettes.
 
 ### Special Candy Visual Language
 
