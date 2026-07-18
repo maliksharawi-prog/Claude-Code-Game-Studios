@@ -77,7 +77,7 @@ readable at arm's length, it doesn't belong in Sweet Cascade.*
 | Hub Gradient — Magenta Pop | `#f107a3` | Region 1 background gradient, stop 2; also Region 1 UI trim/accent |
 | Hub Gradient — Sunset Orange | `#ff8c42` | Region 1 background gradient, stop 3 |
 | Patisserie Cream | `#fff8ef` | UI card/panel base, menu backgrounds, "paper" surfaces |
-| Cocoa Brown | `#6b4226` | UI body text on cream, secondary button outline, world-map path line |
+| Cocoa Brown | `#6b4226` | UI body text on cream, secondary button outline, world-map path line *on cream/light surfaces only — on region gradients the path renders as Patisserie Cream dots for contrast (reconciled 2026-07-18 to the shipped map treatment)* |
 | Gold Reward (core / highlight) | `#ffd93d` / `#fff4b8` | Stars, star-ceremony overlay, reward accents |
 
 **UI palette divergence rule**: UI chrome colors are deepened/desaturated
@@ -270,11 +270,14 @@ colorblind-accessible without relying on hue recognition alone.
   must be readable at 48px thumbnail size (cream against every candy hue
   passes this contrast test).
 - **Color Bomb** (match-5): replaces the base shape entirely with a unique
-  silhouette never used for a real candy type — a faceted swirled orb with
-  a rainbow-gradient surface and a thin white glow ring. It is
+  silhouette never used for a real candy type — a deep midnight orb studded
+  with a ring of rainbow candy dots (one per fruit hue + gold), a thin white
+  glow ring, and a soft pulsing gold glow when idle on the board. It is
   intentionally colorless/all-color so it is never mistaken for a specific
-  candy type. This is the only piece on the board permitted a gradient
-  fill instead of a flat color.
+  candy type. *(Reconciled 2026-07-18 to the shipped slice treatment — the
+  earlier "faceted swirled rainbow-gradient surface" wording described a
+  variant that was never built; the dotted-orb treatment appeared in both
+  founder-reviewed builds and reads better at 40px.)*
 - **Wrapped Candy** *(PROPOSED — Vertical Slice/Alpha scope, not MVP)*:
   base candy shape with a crinkled foil/cellophane overlay pattern
   (twist-tie ends visible at 2 opposite edges); communicates "explodes in

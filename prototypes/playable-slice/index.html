@@ -124,8 +124,9 @@
   #bg-layers { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
   .hill { position:absolute; left:-25%; width:150%; height:34%; border-radius:50% 50% 0 0;
           background:radial-gradient(ellipse at 50% 100%, rgba(90,27,184,.55), rgba(90,27,184,0) 70%); }
-  .hill.back { bottom:-6%; animation:drift 46s ease-in-out infinite alternate; }
-  .hill.front { bottom:-14%; background:radial-gradient(ellipse at 50% 100%, rgba(214,51,132,.5), rgba(214,51,132,0) 70%);
+  .hill.back { bottom:-6%; animation:drift 46s ease-in-out infinite alternate;
+               background:radial-gradient(ellipse at 50% 100%, rgba(74,15,160,.75), rgba(74,15,160,0) 68%); }
+  .hill.front { bottom:-14%; background:radial-gradient(ellipse at 50% 100%, rgba(190,30,120,.7), rgba(190,30,120,0) 68%);
                 animation:drift 30s ease-in-out infinite alternate-reverse; }
   @keyframes drift { to { transform:translateX(5%); } }
   .bokeh { position:absolute; bottom:-6vh; border-radius:50%; pointer-events:none;
@@ -169,6 +170,8 @@
     .map-node.frontier,#hud-moves.low .v { animation:none; }
     .particle,.bokeh,.hill,.burst { display:none; }
     .tile.bomb svg,.tile.striped svg,.tile.drop-in svg,.fizz-anim { animation:none; }
+    .fizz-bounce { animation:none !important; }
+    .star-pop { animation:none; }
   }
 </style>
 </head>
@@ -249,8 +252,8 @@
     <circle cx="22" cy="52" r="15"/><circle cx="50" cy="52" r="16"/><circle cx="78" cy="52" r="15"/>
     <circle cx="36" cy="74" r="15"/><circle cx="64" cy="74" r="15"/><circle cx="50" cy="90" r="13"/>
   </clipPath>
-  <g id="stripes-h"><g opacity=".9" fill="#fff8ef"><rect x="4" y="27" width="92" height="8" rx="4"/><rect x="4" y="46" width="92" height="8" rx="4"/><rect x="4" y="65" width="92" height="8" rx="4"/></g></g>
-  <g id="stripes-v"><g opacity=".9" fill="#fff8ef"><rect x="27" y="4" width="8" height="92" rx="4"/><rect x="46" y="4" width="8" height="92" rx="4"/><rect x="65" y="4" width="8" height="92" rx="4"/></g></g>
+  <g id="stripes-h"><g opacity=".8" fill="#fff8ef"><rect x="4" y="28" width="92" height="6.5" rx="3.2"/><rect x="4" y="47" width="92" height="6.5" rx="3.2"/><rect x="4" y="66" width="92" height="6.5" rx="3.2"/></g></g>
+  <g id="stripes-v"><g opacity=".8" fill="#fff8ef"><rect x="28" y="4" width="6.5" height="92" rx="3.2"/><rect x="47" y="4" width="6.5" height="92" rx="3.2"/><rect x="66" y="4" width="6.5" height="92" rx="3.2"/></g></g>
   <g id="candy-bomb"><ellipse cx="50" cy="95" rx="26" ry="4.5" fill="rgba(60,10,50,.3)"/><circle cx="50" cy="50" r="42" fill="url(#g-bomb)"/>
     <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="2" opacity=".35"/>
     <circle cx="50" cy="20" r="6" fill="#ff5d73"/><circle cx="76" cy="35" r="6" fill="#ff9f45"/><circle cx="76" cy="65" r="6" fill="#ffd93d"/>
@@ -533,7 +536,8 @@ async function clearAndFall(cleared,spawns,chain){
   let popped=0,sr=0,sc=0;
   for(const k of cleared){ const r=Math.floor(k/16),c=k%16; const t=occ(r,c); if(!t)continue;
     S.grid[r][c]=null; popped++; sr+=r; sc+=c;
-    spawnParticles(t); t.el.classList.add('pop'); const el=t.el; setTimeout(()=>el.remove(),220);
+    if(popped<=24) spawnParticles(t);   // cap particle spawns on mass clears (perf QA)
+    t.el.classList.add('pop'); const el=t.el; setTimeout(()=>el.remove(),220);
   }
   if(popped){ spawnBurst(sr/popped,sc/popped); SFX.pop(chain); await sleep(220); }
   // gravity per column segments (masked cells block; candy never falls through voids)
