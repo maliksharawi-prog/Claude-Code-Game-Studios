@@ -1,6 +1,11 @@
 # Level Data Format
 
 *Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see `design/gdd/reviews/level-data-format-review-log.md`*
+*Cross-GDD sync, 2026-07-18: added Dependencies rows for Touch & Input
+System and Game UI/Screens Flow; recorded that `scoring-stars.md` Formula 4
+supersedes `REFERENCE_SCORE_PER_MOVE` with a `color_pool`-size-keyed table
+(raised the safe-range ceiling to 260 so K=3's 255 fits); added an Open
+Questions row on saw-tooth pacing cross-level validation.*
 
 > **Author**: systems-designer
 > **Last Updated**: 2026-07-17
@@ -161,7 +166,7 @@ rationale on V18).
 | V15 | For each `collect_color` objective, `color` is a member of `color_pool` and `count` is an integer `> 0`. This is the schema-level check that catches an "objective impossible with the color pool" authoring mistake. | Blocking |
 | V16 | `star_1_score`, `star_2_score`, `star_3_score` are all integers `> 0`, strictly increasing: `star_1_score < star_2_score < star_3_score`. | Blocking |
 | V17 | If the level has at least one `score_target` objective, `star_1_score <= target`, guaranteeing that completing the level's win condition always awards at least 1 star. | Blocking |
-| V18 | `star_3_score <= reference_max_score` (Formula A, below). | **Advisory** — `REFERENCE_SCORE_PER_MOVE` is a provisional constant owned by this document only until Scoring & Star Thresholds (#6) is written; treat this as a designer sanity check, not a hard gate, until that GDD supersedes the constant. |
+| V18 | `star_3_score <= reference_max_score` (Formula A, below). | **Advisory** — `REFERENCE_SCORE_PER_MOVE` is now superseded by `scoring-stars.md` Formula 4's per-`color_pool`-size table (`K=3→255, K=4→185, K=5→160`, not the flat `160` this document's own Formula A still uses); evaluate V18 against `RSPM(K)` for the level's actual `color_pool` size, not the flat constant. Remains Advisory, not Blocking. |
 | V19 | `rng_seed`, if present, is an integer `>= -1` (`-1` = unseeded default; any value `>= 0` is a valid fixed seed). | Blocking |
 
 Static validation (V1–V19) cannot verify that a `collect_color` `count` is
@@ -225,7 +230,7 @@ reference_max_score = move_limit * REFERENCE_SCORE_PER_MOVE
 | Symbol | Type | Range | Description |
 |--------|------|-------|-------------|
 | `move_limit` | int | 1–99 | This level's authored move allotment (schema field, Section 2). |
-| `REFERENCE_SCORE_PER_MOVE` | int (tuning constant) | 100–250, default `160` | Provisional average score-per-move benchmark. Derived from the concept prototype's greedy-bot playthrough (`prototypes/sweet-cascade-concept/REPORT.md`: 3,960 points over 25 moves ≈ 158.4 pts/move, rounded up to 160). **Provisional** — owned authoritatively by Scoring & Star Thresholds (#6) once written; this document uses it only to sanity-check star thresholds at authoring time. |
+| `REFERENCE_SCORE_PER_MOVE` | int (tuning constant) | 100–260, default `160` | Provisional average score-per-move benchmark. Derived from the concept prototype's greedy-bot playthrough (`prototypes/sweet-cascade-concept/REPORT.md`: 3,960 points over 25 moves ≈ 158.4 pts/move, rounded up to 160). **Superseded** — `scoring-stars.md` Formula 4 now supplies the authoritative, `color_pool`-size-keyed table (`REFERENCE_SCORE_PER_MOVE(K)`: `K=3→255, K=4→185, K=5→160`); this flat constant and Formula A remain only as this document's own pre-authoring sanity-check tool. |
 | `reference_max_score` | int | Unbounded, scales linearly with `move_limit` | An advisory upper bound on achievable score for this level, used by V18 to flag a `star_3_score` that may be mathematically out of reach. |
 
 **Output range**: Unbounded above (grows linearly with `move_limit`); not
@@ -239,6 +244,17 @@ reference_max_score = 25 * 160 = 4,000
 This lands close to the prototype's actually-measured greedy-bot score of
 3,960 — a useful cross-check that `REFERENCE_SCORE_PER_MOVE = 160` is a
 reasonable provisional constant, not an arbitrary guess.
+
+**Superseded (2026-07-18 cross-GDD sync).** `scoring-stars.md` Formula 4
+now supplies the authoritative, per-`color_pool`-size table this constant
+was always meant to be provisional for (`REFERENCE_SCORE_PER_MOVE(K)`:
+`K=3 → 255`, `K=4 → 185`, `K=5 → 160`) — the flat `160` above remains valid
+only as this document's own pre-authoring sanity-check default (it happens
+to equal the `K=5` case exactly, since that was the shared empirical
+anchor). V18 (§4) should be evaluated against the correct `RSPM(K)` for a
+level's actual `color_pool` size, not this flat constant, once Scoring &
+Star Thresholds' table is in hand — the safe-range ceiling above is raised
+from 250 to 260 so `K=3`'s `255` fits within it.
 
 ### Formula B — Star Threshold Validity
 
@@ -318,6 +334,8 @@ expectation now so it isn't lost.
 | Scoring & Star Thresholds (#6, not yet written) | Soft co-design (planned extension) | `REFERENCE_SCORE_PER_MOVE` and `reference_max_score` (Formula A) are provisional placeholders owned here only until that GDD formalizes the authoritative point-value formula, at which point it should reconcile with or supersede these values. |
 | Level Objective & Move-Limit System (#7, not yet written) | Objective depends on this | Reads `objectives` and `move_limit` to drive runtime win/lose evaluation; owns the runtime semantics of each objective type, while this document owns only the data shape. |
 | Level Progression / World Map (#11, not yet written) | World Map depends on this | Reads `level_id`, `region`, `display_number`, and (via Save & Persistence) star thresholds to build the node graph and star-gated unlocks. |
+| Touch & Input System (`design/gdd/touch-input.md`, APPROVED) | Touch & Input depends on this | Reads `grid_width`/`grid_height` only (mapped to `board_cols`/`board_rows`) for swipe bounds-checking and `cell_size_px` computation (`touch-input.md` Formulas 1–3) — never objective, blocker, or candy-palette data. **Reciprocal note fulfilled** — `touch-input.md`'s own Dependencies section already lists this document. |
+| Game UI/Screens Flow (`design/gdd/screen-flow.md`, APPROVED) | Screen Flow depends on this | Reads `objectives` (order-preserved, for Pre-Level Card / HUD badge display order) and `star_1_score`/`star_2_score`/`star_3_score` (for Results display), alongside `level_id`/`display_number`/`region`. **Reciprocal note fulfilled** — `screen-flow.md`'s own Dependencies section already lists this document. |
 | Booster Brewing Meta (#12, Phase 2, gated) | Booster Brewing depends on this | Anticipated `ingredient_yield_overrides` extension point (Section 6, out of v1 scope). |
 | Events/Theming Engine (#13, Phase 3) | Events depends on this | Anticipated `theme_override` extension point (Section 6, out of v1 scope) so events can re-skin existing levels without duplicating files. |
 
@@ -331,7 +349,7 @@ expectation now so it isn't lost.
 | `MIN_PLAYABLE_CELLS` | 16 | 9–36 (must stay well under the 81-cell max board) | Raising the floor forces bigger minimum boards, reducing design freedom for compact/showcase levels. | Lowering the floor risks boards too cramped to reliably guarantee a legal match exists. |
 | `color_pool` size | 5 (reference level) | 3–5 | More colors reduce coincidental matches, producing harder, sparser cascades. The concept prototype found 6 types "too sparse," which is why v1 hard-caps at 5 (`REPORT.md`). | Fewer colors increase match frequency, producing easier, faster, more forgiving cascades — useful for early onboarding levels. |
 | `move_limit` | 25 (reference level) | Schema floor 1; launch design guidance 10–60 | More moves is more forgiving and raises the `reference_max_score` ceiling (Formula A), permitting higher star thresholds. | Fewer moves tightens the puzzle; very low values risk objectives becoming unreachable (a smoke-check, not schema-validation, concern). |
-| `REFERENCE_SCORE_PER_MOVE` | 160 | 100–250 (provisional; ownership transfers to Scoring & Star Thresholds once written) | Loosens the V18 sanity bound, permitting higher `star_3_score` values to pass without warning. | Tightens the bound, forcing more conservative (easier) 3-star targets or triggering more V18 warnings. |
+| `REFERENCE_SCORE_PER_MOVE` | 160 (flat; superseded by `scoring-stars.md` Formula 4's `K`-keyed table for actual evaluation) | 100–260 (raised ceiling so `K=3`'s `255` fits; ownership transferred to Scoring & Star Thresholds) | Loosens the V18 sanity bound, permitting higher `star_3_score` values to pass without warning. | Tightens the bound, forcing more conservative (easier) 3-star targets or triggering more V18 warnings. |
 | `star_1`/`star_2`/`star_3` spacing | 2,500 / 3,200 / 3,900 (reference level) | `star_1_score <= score_target` (if present); each gap should be at least ~10% of `score_target` as a design guideline (not schema-enforced) | Wider gaps make 2- and 3-star mastery rarer and more prestigious. | Narrower gaps make stars easier to collect across the board, reducing replay incentive per `game-concept.md`'s "three-starring old levels" retention hook. |
 
 ---
@@ -404,3 +422,4 @@ expectation now so it isn't lost.
 | Does V18's Advisory (non-blocking) status get promoted to Blocking once Scoring & Star Thresholds (#6) supersedes `REFERENCE_SCORE_PER_MOVE` with an authoritative formula? | systems-designer | At Scoring & Star Thresholds (#6) authoring | — |
 | Does a Phase-3 level's authored `rng_seed >= 0` require a new RNG Service production entry point? `rng-service.md`'s only literal-seed API (`start_test_session()`) is documented as test/debug-only, and `start_daily_session()` does not read this field — neither currently composes with a per-level authored fixed seed. | systems-designer | Before Events/Theming Engine (#13) or any daily-challenge/event level authoring begins | — |
 | Is single-region board connectivity (V8) too restrictive for future "split board" level designs, or is that a real future need worth a v2 schema extension? | game-designer | Revisit at Alpha content planning (120-level scope) | — |
+| Should saw-tooth difficulty pacing (`game-concept.md`'s Flow State Design) get cross-level validation, given this schema's V1–V19 rules validate only a single level file in isolation with no awareness of neighboring levels' difficulty curve? | game-designer | At Vertical Slice content-authoring retrospective | Decide between a lightweight Advisory cross-level check added to the validation suite (e.g., comparing consecutive levels' `move_limit`/`reference_max_score` trend) versus manual-playtest-only enforcement with no schema-level check at all — not yet decided. |

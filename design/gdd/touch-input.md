@@ -1,6 +1,11 @@
 # Touch & Input System
 
 *Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see `design/gdd/reviews/touch-input-review-log.md`*
+*Cross-GDD sync, 2026-07-18: added a Juice Layer Dependencies boundary row;
+§4's input-gate description now cites the ratified 4-term
+`effective_board_input_enabled` composition (`screen-flow.md` Formula 5);
+Board Engine's Dependencies row now notes it as `cell_size_px`'s
+authoritative computed source (its Formula 4).*
 *Created: 2026-07-17*
 *Last Updated: 2026-07-17*
 *Layer: Foundation · Priority: MVP · Phase: MVP · Category: Core*
@@ -161,16 +166,25 @@ reality.
 
 ### 4. Input Locking During Cascade Resolution
 
-- The board exposes a single `board_input_enabled` boolean (owned/driven by
-  whichever system tracks simulation busy-state — expected to be Match-3
-  Board Engine). While false ("busy": cascade, gravity, refill, or any
-  non-idle simulation state), Touch & Input's **default MVP behavior is to
-  drop every gesture that starts during that window entirely** — no
-  intent, no visual feedback, no queuing. This matches the validated
-  concept prototype exactly (`busy` flag gates all pointer handlers in
-  `prototype.html`) and is the simplest, safest, most testable default: the
-  player never fires an action against board state that is still changing
-  underneath them.
+- The board exposes a single gate boolean Touch & Input's Rule 4 reads
+  before accepting any gesture. In production this is the fully-composed
+  `effective_board_input_enabled = (base_state==GAMEPLAY) AND
+  board_input_enabled AND NOT overlay_is_active AND NOT juice_input_lock`
+  (`screen-flow.md` Formula 5, ratified 2026-07-18) — Board Engine's own
+  raw busy signal (`board_input_enabled`) is only one of its four
+  independently-owned terms; Screen Flow composes `overlay_is_active` and
+  Juice Layer composes `juice_input_lock` on top of it. Touch & Input
+  itself is unaware of, and does not need to know, which system owns which
+  term — it simply reads whatever boolean it is handed and treats it
+  identically regardless of source. While that composed value is false
+  ("busy": cascade, gravity, refill, or any non-idle simulation state, an
+  open overlay, or an in-flight Juice Layer reveal replay), Touch & Input's
+  **default MVP behavior is to drop every gesture that starts during that
+  window entirely** — no intent, no visual feedback, no queuing. This
+  matches the validated concept prototype exactly (`busy` flag gates all
+  pointer handlers in `prototype.html`) and is the simplest, safest, most
+  testable default: the player never fires an action against board state
+  that is still changing underneath them.
 - **Tuning-knob variant** (`input_buffer_depth = 1`, **not** the MVP
   default): while busy, Input tracks gestures normally up through producing
   a fully-resolved `swap_request`. Instead of dropping it, the most recent
@@ -427,9 +441,10 @@ Format may introduce.
 
 | System | Direction | Nature of Dependency |
 |--------|-----------|-----------------------|
-| Match-3 Board Engine (`design/gdd/board-engine.md`, not yet authored) | Board Engine depends on this | Consumes `select_cell`, `swap_request(cell_a, cell_b)`, and `cancel` as the sole trigger for any board mutation; owns all swap validation, match detection, and simulation state, and owns/drives the `board_input_enabled` busy signal this document reads. **Reciprocal note**: when `board-engine.md` is authored, its Dependencies section must list this document and document how it consumes these three intents. |
+| Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED) | Mutual | Consumes `select_cell`, `swap_request(cell_a, cell_b)`, and `cancel` as the sole trigger for any board mutation; owns all swap validation, match detection, and simulation state, and owns/drives the `board_input_enabled` busy signal this document reads. **Reciprocal note fulfilled** — `board-engine.md`'s own Dependencies section lists this document and confirms how it consumes these three intents. Board Engine is also the authoritative computed source of `cell_size_px` (its Formula 4) — this document's Formulas 1 and 3 consume it only as an externally-supplied runtime value, never computing it themselves. |
 | Level Data Format (`design/gdd/level-data-format.md`) | This depends on it (data only) | Supplies board grid dimensions needed for bounds-checking swipe targets (Formula 2) and computing `cell_size_px` (Formulas 1 and 3) at level load — Level Data Format's `grid_height` maps to this document's `board_rows`, and `grid_width` maps to `board_cols` (row-major convention, §1). Touch & Input reads dimensions only — never objective, blocker, or candy-palette data. |
 | Game UI/Screens Flow (`design/gdd/screen-flow.md`, not yet authored) | Soft runtime dependency | Expected to co-own (alongside Board Engine) toggling `board_input_enabled` false during pause menus, results overlays, and any modal (Rule 4, Edge Case: modal mid-gesture). **Reciprocal note**: when `screen-flow.md` is authored, its Dependencies section must list this document and the `board_input_enabled` contract. |
+| Juice Layer — VFX & Audio Hooks (`design/gdd/juice-layer.md`, APPROVED) | Not a dependency — boundary note only | Owns reduced-motion preference behavior (dampened screen-shake, particle bloom) per this document's own § 7; Touch & Input's selection-highlight feedback is a simple state toggle, not a motion effect, and is unaffected by that setting. Listed here only to make the dependency boundary explicit. |
 | `design/art/art-bible.md` (not a `design/gdd/` system) | This depends on it (constant only) | Supplies `visual_fill_ratio` (0.84, candy chip sizing) consumed in Formula 3. |
 | `.claude/docs/technical-preferences.md` (not a `design/gdd/` system) | This depends on it (constant + rule only) | Supplies `MIN_TOUCH_TARGET_PX` (44px, hard floor) and the "no hover-only interactions" rule enforced in Rule 6. |
 

@@ -1,6 +1,8 @@
 # Match-3 Board Engine
 
 *Status: Reviewed — APPROVED (re-review, 2026-07-18)*
+*Cross-GDD sync, 2026-07-18: added a Dependencies row for Level
+Progression/World Map (W6-W7 manifest cross-validation).*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Core · Priority: MVP · Phase: MVP · Category: Gameplay*
@@ -1121,6 +1123,7 @@ theoretical case, stays comfortably inside the `16.6ms` frame budget
 | Level Objective & Move-Limit System (`design/gdd/level-objectives.md`, not yet authored) | Will depend on Board Engine | Consumes `swap_accepted` (a move was spent — the *only* move-related fact Board Engine reports) and `match_cleared.cleared_pieces`' per-piece `color` (for `collect_color` objective tallies, derivable purely from the event stream per § Detailed Rules 13's deferred-replay guarantee) — reads `move_limit` directly from Level Data Format, not through Board Engine. **Reciprocal note**: when authored, its Dependencies section must list this document. |
 | Juice Layer — VFX & Audio Hooks (`design/gdd/juice-layer.md`, not yet authored) | Will depend on Board Engine | Subscribes to the full signal catalog (§ Detailed Rules 7), including `pieces_spawned` for fall-in rendering, to drive all presentation pacing (§ Detailed Rules 13). **Reciprocal note**: when authored, its Dependencies section must list this document. |
 | Game UI/Screens Flow (`design/gdd/screen-flow.md`, not yet authored) | Will depend on Board Engine (soft) | Expected future supplier of `attempt_number` at level bootstrap, and co-owner (alongside Touch & Input) of external `board_input_enabled` gating during pause/results modals. For MVP, the Level Preview harness (`level-data-format.md` §5) fills this role. **Reciprocal note**: when authored, its Dependencies section must list this document. |
+| Level Progression / World Map (`design/gdd/world-map.md`, APPROVED) | World Map depends on this (validation only, no runtime dependency) | Cross-validates this document's owned `assets/data/level_manifest.tres` against `world-map.md`'s own `world_map_manifest.tres` (that document's Validation rules W6–W7, § Detailed Rules 2). World Map never reads Board Engine's live/runtime state — only this static manifest file, at build/CI time. |
 | `design/art/art-bible.md` (not a `design/gdd/` system) | Board Engine depends on it (constants only) | Supplies `CANVAS_WIDTH_PX`/`CANVAS_HEIGHT_PX` (1080×1920) and the "top third of screen: HUD" layout rule consumed in Formula 4. |
 | `.claude/docs/technical-preferences.md` (not a `design/gdd/` system) | Board Engine depends on it (constants + rules only) | Supplies `MIN_TOUCH_TARGET_PX` (44px, Formula 4), the `≤100 draw calls` budget (Formula 5), the `16.6ms` frame budget (§ Detailed Rules 13, Formula 7), and the determinism/gdUnit4 testing rule this entire document is built to satisfy. |
 

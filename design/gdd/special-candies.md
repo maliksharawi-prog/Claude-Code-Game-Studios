@@ -1,6 +1,9 @@
 # Special Candies & Combo Matrix
 
 *Status: Reviewed — APPROVED (lean review, 2026-07-18)*
+*Cross-GDD sync, 2026-07-18: added a required design constraint to § 9 for
+Booster Brewing Meta's future authoring gate — ingredient yield must be
+capped/curved, never a naive 1:1 of `cleared_pieces`.*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Gameplay*
@@ -427,6 +430,16 @@ task's explicit scope boundary:
 - **What this document does not do:** define ingredient types, yield
   multipliers, or any brewing-specific terminology. That remains entirely
   Booster Brewing Meta's scope when its Phase 2 gate is passed.
+- **Required design constraint for Booster Brewing Meta's authoring gate
+  (2026-07-18 cross-GDD sync).** When Booster Brewing Meta (#12) is
+  authored, its ingredient-yield formula **must** cap or curve yield per
+  move (a per-move ceiling, diminishing returns, or an equivalent bound) —
+  it must never be a naive 1:1 conversion of `cleared_pieces` count. A
+  single Bomb+Bomb combo alone can report every `OCCUPIED` cell on the
+  board as cleared in one step (Formula 5, above — up to 64 cells on the
+  reference 8×8 level), so an uncapped 1:1 yield model is an open faucet,
+  not a tuned economy. This is a required constraint on that future
+  document's design, not merely a suggestion.
 
 ### 10. Seam Implementation Summary (Signature Confirmation)
 

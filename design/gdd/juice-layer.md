@@ -2,6 +2,9 @@
 
 *Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see
 `design/gdd/reviews/juice-layer-review-log.md`*
+*Cross-GDD sync, 2026-07-18: noted in § 10 that `screen-flow.md`'s T15/T16
+Results transitions now formally wait on `juice_input_lock` (with a safety
+ceiling) before leaving Gameplay.*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Presentation · Priority: MVP · Phase: MVP · Category: Feel*
@@ -485,6 +488,17 @@ follow-up this section originally proposed as "not made there" has been
 made there; `screen-flow.md`'s Formula 5 is the canonical definition, this
 document's own Formula 5 restates it for local reference (see
 Cross-References).
+
+**A second, later extension (2026-07-18 cross-GDD sync).** `screen-flow.md`
+§ Detailed Rules 10a now also gates its T15/T16 Results transitions on this
+same `juice_input_lock` signal — the base-state change to `RESULTS_WIN`/
+`RESULTS_LOSE` is held until this document's Reveal Queue reports
+`juice_input_lock = false` (or `screen-flow.md`'s own
+`RESULTS_TRANSITION_SAFETY_CEILING_MS` safety ceiling elapses), so the
+final-move cascade this document exists to present is never cut off by an
+early Results transition. This document requires no change of its own in
+response — `juice_input_lock_changed` already carries everything that rule
+needs.
 
 ### 11. Declared Seams
 

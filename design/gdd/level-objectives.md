@@ -1,11 +1,17 @@
 # Level Objective & Move-Limit System
 
 *Status: Reviewed — APPROVED (re-review, 2026-07-18)*
+*Cross-GDD sync, 2026-07-18: § Detailed Rules 9 now calls Save &
+Persistence's `record_level_completion()` on WIN, strictly before emitting
+`level_resolved` (never on LOSE); added a Dependencies row, a header
+dependency, and an Acceptance Criteria test — resolves the "no system
+persists a win" gap flagged in `save-persistence.md`, `screen-flow.md`, and
+`world-map.md`.*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Feature · Priority: MVP · Phase: MVP · Category: Gameplay*
 *Author: systems-designer*
-*Depends On: Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2), Level Data Format (`design/gdd/level-data-format.md`, APPROVED), Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, Revised — Revision 2 — this document pulls its ratified Score Query API, see § Detailed Rules 3, 9 and Dependencies)*
+*Depends On: Match-3 Board Engine (`design/gdd/board-engine.md`, APPROVED — Revision 2), Level Data Format (`design/gdd/level-data-format.md`, APPROVED), Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, Revised — Revision 2 — this document pulls its ratified Score Query API, see § Detailed Rules 3, 9 and Dependencies), Save & Persistence (`design/gdd/save-persistence.md`, APPROVED — calls its `record_level_completion()` write API on WIN, see § Detailed Rules 9 and Dependencies)*
 *Depended On By: Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft), Booster Brewing Meta (#12, Phase 2, gated, not yet authored)*
 *Source: `design/gdd/systems-index.md` · `design/gdd/level-data-format.md` §§2–4 · `design/gdd/board-engine.md` §§ Detailed Rules 3, 4, 5, 6, 7, 11, 13 · `design/gdd/special-candies.md` §§ Detailed Rules 5, 6, 9, 10 · `design/gdd/screen-flow.md` §§7, 11 · `design/gdd/rng-service.md` · `design/gdd/game-concept.md` · `design/art/art-bible.md`*
 
@@ -459,9 +465,30 @@ ResultsData = {
 }
 ```
 
-and emits `level_resolved(outcome, results_data)` using this self-assembled
-record — never a value passed through verbatim from Scoring, unlike the
-dropped push model. This drops the previously-proposed
+**Persistence write precedes the resolution event — the ordering
+guarantee.** Immediately after composing `results_data` above, and
+**only when `outcome == WIN`** (never on `LOSE`), Level Objective calls
+Save & Persistence's write API directly, using fields already present in
+the just-composed record — no separate lookup:
+
+```
+Save_Persistence.record_level_completion(level_id: String, stars_earned: int, score_earned: int)
+```
+
+(`save-persistence.md` § Detailed Rules 11.) This call is issued, and
+completes, **strictly before** `level_resolved` is emitted below — Level
+Objective's own resolution event can therefore never fire ahead of the
+persistence request for the same win, so a Results-screen state
+(`screen-flow.md` T15) can never celebrate a win Save & Persistence was
+never even asked to record. Whether that write itself durably succeeds, or
+instead falls through Save & Persistence's own atomic-write/corruption
+handling (`save-persistence.md` §4, §6) on a failure, is entirely that
+document's concern, not this one's — Level Objective neither inspects nor
+retries the call; it fires it once, in the fixed order above, and proceeds.
+
+Level Objective then emits `level_resolved(outcome, results_data)` using
+this self-assembled record — never a value passed through verbatim from
+Scoring, unlike the dropped push model. This drops the previously-proposed
 `ScoreProvider.finalize_results(objectives_resolution: ObjectivesResolution)
 -> ResultsData` seam entirely: Scoring never receives `ObjectivesResolution`
 and never assembles `outcome` or any part of `closest_miss_summary` it has
@@ -782,6 +809,7 @@ immediately before the win screen.
 | Special Candies & Combo Matrix (`design/gdd/special-candies.md`, Draft) | **No direct dependency** — zero-coupling by design | Level Objective never calls any Special Candies seam and never subscribes to `special_activated` for tallying purposes (§ Detailed Rules 4 explains why). It depends only on Board Engine's `match_cleared` contract, which Special Candies is itself bound to preserve without modification ("No seam's signature is extended, narrowed, or reinterpreted," `special-candies.md` § Detailed Rules 10). This is the same mechanism Special Candies' own § Detailed Rules 9 (Harvest Observation Point) names as its "zero API changes" guarantee to this document. |
 | Scoring & Star Thresholds (`design/gdd/scoring-stars.md`, Revised — Revision 2) | This depends on it — one-directional read, per `systems-index.md`'s Circular Dependencies resolution ("Objective reads the live score... Scoring never needs Objective's internal state") | Two ratified synchronous pull seams: `ScoreProvider.get_current_score() -> int` (§ Detailed Rules 3, continuous use for `score_target` tracking) and `ScoreProvider.get_score_results() -> ScoreResults` (§ Detailed Rules 9, called once per attempt at resolution to pull `final_score`/`stars_earned`/`score_progress_ratio`/`score_progress_percent`). **Reciprocal note fulfilled**: `scoring-stars.md` § Detailed Rules 10a lists both signatures; its Dependencies section lists this document. Replaces the previously-proposed `finalize_results()` push seam, dropped in the Revision 2 reconciliation (see changelog). |
 | Game UI/Screens Flow (`design/gdd/screen-flow.md`, Draft) | Depended on by it (forward) | Consumes `level_resolved(outcome, results_data)` (T15/T16, driving the Results Win/Lose transition), `objective_progressed` and `moves_remaining_changed` (HUD chip/move-counter live updates), and the `ObjectiveDisplayModel` (§ Detailed Rules 10) for the Pre-Level Card. **This document fulfills the reciprocal note `screen-flow.md` requested**: "when authored, its Dependencies section must list this document and specify exactly how/when it emits `level_resolved`" — answered in § Detailed Rules 8–9. |
+| Save & Persistence (`design/gdd/save-persistence.md`, APPROVED) | This depends on it — calls its write API | Calls `record_level_completion(level_id, stars_earned, score_earned)` (`save-persistence.md` § Detailed Rules 11) exactly once per WIN resolution, immediately after composing `results_data` and strictly before emitting `level_resolved` (§ Detailed Rules 9) — never called on LOSE. **Reciprocal note fulfilled** — resolves the previously-flagged "no system persists a win" gap in `save-persistence.md`'s, `screen-flow.md`'s, and `world-map.md`'s own Dependencies/Open Questions sections. |
 | Booster Brewing Meta (#12, Phase 2, gated, not yet authored) | Depended on by it (forward) | Anticipated to read the same `match_cleared`-derived per-color tally mechanism this document already uses for `collect_color` (per `special-candies.md` § Detailed Rules 9's Harvest Observation Point). `level-data-format.md`'s Open Questions flags whether `collect_color`'s tile-count semantics should formally reconcile with a future ingredient-harvest yield formula — this document's position (§ Detailed Rules 1, 4): they stay **decoupled**. `collect_color` counts raw cleared tiles of a color, full stop; any future yield-multiplier logic (e.g., a Striped clear yielding more ingredient than a plain match) is exclusively Booster Brewing Meta's scope to define on top of the same underlying `match_cleared` event stream, never a change to this document's counting rule. |
 | RNG Service (`design/gdd/rng-service.md`, APPROVED) | No dependency | This document consumes zero randomness — every rule (progress tallying, move accounting, win/lose evaluation) is a pure, deterministic function of already-resolved Board Engine signals and Scoring's live score, mirroring Special Candies & Combo Matrix's own "RNG Usage: None" position (`special-candies.md` § Detailed Rules 8) for the same category of reason: determinism and readability directly serve Pillar 2. |
 
@@ -841,6 +869,12 @@ immediately before the win screen.
       reflects every tracker's final `current`/`target_value`/
       `is_complete` state, `moves_used`, and `moves_remaining` — confirming
       Level Objective, not Scoring, performs the assembly.
+- [ ] A unit test asserts the win→persistence call: given a mock
+      `Save_Persistence.record_level_completion()` seam, a WIN resolution
+      invokes it **exactly once**, with `level_id`/`stars_earned`/
+      `score_earned` matching that same attempt's composed `results_data`
+      values, and strictly before the test's mock `level_resolved` listener
+      observes the event; a LOSE resolution invokes it **zero times**.
 - [ ] A unit test asserts `ScoreProvider.get_current_score()` is queried
       via a plain synchronous call (never a signal) at every relevant
       evaluation point (§ Detailed Rules 3, 5), and that a mocked

@@ -2,6 +2,11 @@
 
 *Status: Reviewed — APPROVED (design-review lean, 2026-07-18) — see
 `design/gdd/reviews/screen-flow-review-log.md`*
+*Cross-GDD sync, 2026-07-18: closed the "no system persists a win" gap —
+`level-objectives.md` now confirms its `record_level_completion()` call
+(Dependencies, Cross-References); resolved the Results-transition-timing
+Open Question — T15/T16 now wait on `juice_input_lock` with a safety
+ceiling (§ Detailed Rules 10a, new Tuning Knob).*
 *Created: 2026-07-18*
 *Last Updated: 2026-07-18*
 *Layer: Presentation · Priority: MVP · Phase: MVP · Category: UI*
@@ -154,8 +159,8 @@ relevant. `attempt_number` handling is detailed in §7.
 | T12 | `(B3,[O2])` | Tap Quit to Map | `(B2,[])` | Base + Pop | Level abandoned; no `LevelRecord` write (`save-persistence.md` §10). No confirmation dialog (§4). |
 | T13 | `(B3,[O2])` | Tap Settings gear | `(B3,[O2,O3])` | Overlay-Push (depth 2) | |
 | T14 | `(B3,[O2,O3])` | Tap Back / OS back | `(B3,[O2])` | Overlay-Pop | |
-| T15 | `(B3,[])` | `level_resolved(WIN, results_data)` *(seam event)* | `(B4,[])` | Base | Fired by the future Level Objective / Scoring systems. |
-| T16 | `(B3,[])` | `level_resolved(LOSE, results_data)` *(seam event)* | `(B5,[])` | Base | Fired by the future Level Objective / Scoring systems; `results_data.closest_miss_summary` populated. |
+| T15 | `(B3,[])` | `level_resolved(WIN, results_data)` *(seam event)*, transition held until `juice_input_lock` returns `false` or the safety ceiling elapses | `(B4,[])` | Base | Fired by Level Objective & Move-Limit System (`level-objectives.md` § Detailed Rules 9); actual transition deferred per § Detailed Rules 10a. |
+| T16 | `(B3,[])` | `level_resolved(LOSE, results_data)` *(seam event)*, same wait rule as T15 | `(B5,[])` | Base | Fired by Level Objective & Move-Limit System; `results_data.closest_miss_summary` populated; deferred per § Detailed Rules 10a. |
 | T17 | `(B4,[])` or `(B5,[])` | Tap Retry | `(B3,[])` | Base | Same `level_id`, `attempt_number` increments by 1 (§7); **Pre-Level Card is skipped** (§6). |
 | T18 | `(B4,[])` | Tap Next Level *(conditional — only rendered if a next level exists and is unlocked)* | `(B2,[O1])` | Compound | `attempt_number` resets to 1 for the new `level_id`. |
 | T19 | `(B4,[])` or `(B5,[])` | Tap Map / OS back | `(B2,[])` | Base | |
@@ -345,6 +350,33 @@ down, expressed as both a millisecond ceiling and a frame-count budget at
 the project's 60fps target (Formula 2). The concrete default values live in
 Tuning Knobs (`MAX_SCREEN_TRANSITION_MS`, `MAX_MODAL_TRANSITION_MS`); no
 transition — base-state or overlay — may exceed its class's ceiling.
+
+### 10a. Results Transition Timing — Waiting on the Juice Reveal Queue
+
+**Resolved (2026-07-18 cross-GDD sync).** T15 (`→ RESULTS_WIN`) and T16
+(`→ RESULTS_LOSE`) do not perform their base-state transition the instant
+`level_resolved` arrives — they wait until the Juice Layer's
+`juice_input_lock` (`juice-layer.md` § 10, Formula 5) returns `false`, i.e.
+until the board reads visually idle and that move's full Reveal Queue has
+finished presenting, **with a hard safety ceiling**
+(`RESULTS_TRANSITION_SAFETY_CEILING_MS`, Tuning Knobs) so a stuck or
+defective Reveal Queue can never soft-lock the game on a `level_resolved`
+event it has already received. Whichever condition is met first —
+`juice_input_lock` clearing, or the ceiling elapsing — triggers the
+transition.
+
+**Rationale.** `level_resolved` can fire the instant Level Objective's own
+synchronous win/lose evaluation resolves (`level-objectives.md` § Detailed
+Rules 8), which is typically well before the Juice Layer has finished — or
+even started — presenting that same move's cascade (§7's three-way
+`board_input_enabled`/`overlay_is_active`/`juice_input_lock` composition
+already establishes this exact timing gap). Transitioning to Results
+immediately would cut the final-move jackpot cascade off mid-animation —
+this design's single biggest "clever, not lucky" peak-drama moment
+(`level-objectives.md` § Player Fantasy). Waiting on `juice_input_lock`
+protects that beat; the safety ceiling protects against the opposite
+failure mode — a hung or defective Reveal Queue never clearing the lock and
+stranding the player on a finished level with no way forward.
 
 ### 11. Declared Seams
 
@@ -636,7 +668,7 @@ live profile as ambiguous evidence.
 | Touch & Input System (`touch-input.md`, APPROVED) | Mutual | Touch & Input's controller is hosted only while `base_state == GAMEPLAY` (§7); Screen Flow composes `overlay_is_active` (its own term) and `juice_input_lock` (Juice Layer's term) alongside Board Engine's own `board_input_enabled` into the single `effective_board_input_enabled` signal Touch & Input's Rule 4 reads (Formula 5). **This document fulfills the reciprocal note requested in `touch-input.md` §Dependencies** — note `touch-input.md`'s own text ("owned/driven by whichever system tracks simulation busy-state — expected to be Match-3 Board Engine") is now understood to describe the raw Board Engine term only, not the final composed value; a cross-reference update at `touch-input.md`'s next review pass would clarify this without changing its behavior. |
 | Match-3 Board Engine (`board-engine.md`, APPROVED) | Mutual | Screen Flow triggers Board Engine's bootstrap on every Gameplay entry (T4, T11, T17, T18) and supplies the caller-owned `attempt_number` parameter (§7). **This document fulfills the reciprocal note requested in `board-engine.md` §Dependencies**, superseding the MVP-only Level Preview harness as the production supplier. |
 | Juice Layer — VFX & Audio Hooks (`juice-layer.md`, Draft) | Mutual | Juice Layer supplies the `juice_input_lock` veto term this document's Formula 5 now composes (§7). **This document fulfills the reciprocal follow-up `juice-layer.md` §10 proposed** ("a recommended follow-up to `screen-flow.md`, not made there") — the extension is adopted here. |
-| Level Objective & Move-Limit System (#7, Draft) | Forward seam — this depends on it | Emits `level_resolved(outcome, results_data)` (T15/T16), designed here only against Level Data Format's already-fixed `objectives`/star-threshold data surface. **Reciprocal note fulfilled** — `level-objectives.md`'s own Dependencies section lists this document and specifies exactly how/when it emits `level_resolved` (its § Detailed Rules 8–9). **Open gap** (see this document's own Data Contract note, §5): `level-objectives.md` does not itself describe calling Save & Persistence's `record_level_completion()`, despite this document's and `save-persistence.md`'s text both attributing that call to it — flagged, not resolved here (out of this document's file-edit scope). |
+| Level Objective & Move-Limit System (#7, Draft) | Forward seam — this depends on it | Emits `level_resolved(outcome, results_data)` (T15/T16), designed here only against Level Data Format's already-fixed `objectives`/star-threshold data surface. **Reciprocal note fulfilled** — `level-objectives.md`'s own Dependencies section lists this document and specifies exactly how/when it emits `level_resolved` (its § Detailed Rules 8–9). **Gap closed (2026-07-18 cross-GDD sync)**: `level-objectives.md` § Detailed Rules 9 now explicitly confirms calling Save & Persistence's `record_level_completion()` on WIN, strictly before `level_resolved` fires — this document's own Data Contract note (§5) is confirmed accurate as originally written. |
 | Scoring & Star Thresholds (#6, Draft) | Forward seam — this depends on it | Supplies `stars_earned` (0–3) and `score_earned` inside `ResultsData` (§11), per `scoring-stars.md` § Detailed Rules 10. |
 | Level Progression / World Map (#11, Draft) | Forward seam — this depends on it | Supersedes the MVP linear level-list placeholder (§9) while reusing the same `WORLD_MAP` base state and Data Contract (§5) unchanged, per `world-map.md`'s own Dependencies section. |
 | Booster Brewing Meta (`booster-brewing.md`, #12, Phase 2, gated) | It depends on this (`systems-index.md`) | Reserved, unrendered `brewing_loadout_slot` mount point on Pre-Level Card (§11) — named only, not designed. |
@@ -660,6 +692,7 @@ live profile as ambiguous evidence.
 | `MIN_STARS_TO_UNLOCK_NEXT` | 1 | 0–2 | Higher values gate progression more tightly, rewarding mastery before advancing | 0 removes the gate entirely (every level always unlocked); useful for QA/debug builds, not intended as a shipped default |
 | `OVERLAY_STACK_MAX_DEPTH` | 2 | fixed at 2 | N/A — architectural constant; a 3rd overlay layer would require re-deriving the Legal Composite States list (§1) and has no current design need | N/A — 1 would remove the ability to open Settings from Pause (T13), a validated part of this design |
 | `BOARD_RESET_BUDGET_ALLOCATION_MS` (`t_reset_ms` default) | 900ms | 400–1,400ms | Provisional advisory allocation only — the true cost is owned by Board Engine; raising this number here doesn't make a reset faster, it only changes what Formula 3 treats as "in budget" | Tightens the advisory allocation, putting more pressure on Board Engine's own bootstrap performance to hit the retry latency budget |
+| `RESULTS_TRANSITION_SAFETY_CEILING_MS` (§ Detailed Rules 10a) | 15,000ms | 8,000 – 20,000ms | A higher ceiling gives a stuck Reveal Queue more benefit-of-the-doubt before the game forces the T15/T16 transition anyway, at the cost of a longer worst-case stall if `juice_input_lock` genuinely never clears | A lower ceiling forces the transition sooner after a stuck queue, but risks cutting off a legitimately long, deep cascade's presentation if set below `juice-layer.md` Formula 2's worst-case `total_presentation_ms(MAX_CASCADE_DEPTH=20)` bound (≈14.1s under maximal fall-distance/chain-depth assumptions) |
 
 ---
 
@@ -765,7 +798,7 @@ the relevant signal):
 | `board_input_enabled` internal signal, bootstrap procedure step 2 | `design/gdd/board-engine.md` | Bootstrap procedure (§Detailed Rules), reciprocal dependency note | Rule dependency, mutual — discharged in this document's §7 and Dependencies. |
 | Gesture state machine hosting, Rule 4 busy-gate | `design/gdd/touch-input.md` | §4 Input Locking During Cascade Resolution, reciprocal dependency note | Rule dependency, mutual — discharged in this document's §7 and Dependencies. |
 | `objectives` array order for primary-badge display | `design/gdd/level-data-format.md` | §2 Schema v1 Field Reference, `objectives` field note | Data dependency — this document is the anticipated consumer named there. |
-| `record_level_completion()` call timing, `profile_recovery_notice_needed` | `design/gdd/save-persistence.md` | §3 Save Triggers, §6 Corruption Recovery Ladder | Rule dependency — the timing assumption behind Formula 6 and the recovery-notice edge case. **Open gap** (2026-07-18 review): `level-objectives.md`, the system both documents attribute this call to, does not itself confirm making it — see this document's Dependencies table. |
+| `record_level_completion()` call timing, `profile_recovery_notice_needed` | `design/gdd/save-persistence.md` | §3 Save Triggers, §6 Corruption Recovery Ladder | Rule dependency — the timing assumption behind Formula 6 and the recovery-notice edge case. **Resolved (2026-07-18 cross-GDD sync)**: `level-objectives.md` § Detailed Rules 9 now confirms this call explicitly — see this document's Dependencies table. |
 | `juice_input_lock` veto term | `design/gdd/juice-layer.md` | §10 Input Lock Ownership, Formula 5 | Rule dependency — adopted into this document's Formula 5 in the 2026-07-18 review, closing the extension `juice-layer.md` proposed but did not make here itself. |
 | Fizz mount points, line pools, non-blocking/silence-is-valid rules | `design/narrative/characters-and-tone.md` | §2 Mascot Guide Character — Fizz | Content dependency. |
 | Card-based Menu Layout Principles, HUD Density zoning, one-primary-action rule | `design/art/art-bible.md` | UI Art Standards | Rule dependency. |
@@ -777,7 +810,7 @@ the relevant signal):
 | Question | Owner | Deadline | Resolution |
 |----------|-------|----------|-----------|
 | What exact shape does `closest_miss_summary` take (a single normalized ratio, a per-objective breakdown, or a pre-formatted string)? | game-designer / systems-designer | At Level Objective & Move-Limit System (#7) authoring | — |
-| Does Level Objective's `level_resolved` event fire before or after Board Engine's board fully settles visually (last cascade finishes), and does Screen Flow need to wait on an additional "board is visually idle" signal before transitioning to Results? | systems-designer | At Level Objective & Move-Limit System (#7) authoring | — |
+| Does Level Objective's `level_resolved` event fire before or after Board Engine's board fully settles visually (last cascade finishes), and does Screen Flow need to wait on an additional "board is visually idle" signal before transitioning to Results? | systems-designer | At Level Objective & Move-Limit System (#7) authoring | **Resolved (2026-07-18 cross-GDD sync).** Yes — `level_resolved` can fire before the board is visually idle; T15/T16 now wait on `juice_input_lock` returning `false`, with a `RESULTS_TRANSITION_SAFETY_CEILING_MS` hard ceiling. See § Detailed Rules 10a. |
 | Should the World Map's placeholder linear level-list (§9) live in a dedicated intermediate file, or should Level Progression / World Map (#11) simply replace its contents in place when authored? | game-designer | At Level Progression / World Map (#11) authoring | — |
 | Should `BOARD_RESET_BUDGET_ALLOCATION_MS` be reconciled with an authoritative Board Engine bootstrap-cost measurement once that document's Vertical Slice performance pass exists? | technical-director | Post-Vertical-Slice performance validation | — |
 | Does the World Map need its own idle Fizz line pool (a "map ambient" pool), or does Fizz remain a purely visual companion there through launch? | narrative-director | Before Vertical Slice content pass | — |
