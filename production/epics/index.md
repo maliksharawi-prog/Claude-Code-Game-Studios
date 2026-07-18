@@ -20,7 +20,7 @@ both owned by **E09**, pending the deliberately-deferred ADR-G / ADR-H.
 
 | Epic | Layer | System(s) | Primary GDD(s) | TRs Owned | Depends On | Stories | Status |
 |------|-------|-----------|----------------|-----------|------------|---------|--------|
-| E01 project-scaffold-ci | Foundation (infra) | Unity project / assemblies / CI | technical-preferences.md · arch §5 | 1 (perf-002) | — | Not yet created | Ready |
+| E01 project-scaffold-ci | Foundation (infra) | Unity project / assemblies / CI | technical-preferences.md · arch §5 | 1 (perf-002) | — | 6 stories | Ready |
 | E02 domain-foundation | Foundation | RNG · Level Data schema · Save codec · Manifest tool | rng-service · level-data-format · save-persistence · world-map | 10 | E01 | Not yet created | Ready |
 | E03 board-engine-specials | Core / Feature | Match-3 Board Engine · Special Candies | board-engine · special-candies | 8 | E01, E02 | Not yet created | Ready |
 | E04 scoring-objectives | Feature | Scoring & Stars · Level Objective & Move-Limit | scoring-stars · level-objectives | 7 | E01, E02, E03 | Not yet created | Ready |

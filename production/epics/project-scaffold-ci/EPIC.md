@@ -5,7 +5,7 @@
 > **GDD**: — (governed by `.claude/docs/technical-preferences.md` + `docs/architecture/architecture.md` §5 Assembly Architecture)
 > **Architecture Module**: Assembly layout (SweetCascade.Domain / .Game / .UI / .Editor / .Tests), URP Render Graph project template, Domain-purity CI guard, game-ci gate
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories project-scaffold-ci`
+> **Stories**: 6 stories created 2026-07-18 (see Stories table below)
 
 ## Scope
 
@@ -64,8 +64,24 @@ This epic is complete when:
 - All acceptance criteria from `.claude/docs/technical-preferences.md` (engine, input,
   rendering, forbidden patterns) are satisfied by the project settings.
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Unity 6.3 project shell — URP Render Graph, portrait player settings, package manifest | Integration | Ready | ADR-001 |
+| 002 | Five assembly definitions + one-way dependency direction + Domain `noEngineReferences` | Integration | Ready | ADR-004 |
+| 003 | Domain-purity CI denylist scan (L2) + injected-violation self-test | Integration | Ready | ADR-004 |
+| 004 | game-ci test-runner gate activation — guard removal, license documented, first green run | Integration | Ready | ADR-004 |
+| 005 | Edit/Play Mode test skeletons + example conventions test | Integration | Ready | ADR-004 |
+| 006 | Editor tooling folder layout + manifest-generator stub placement | Config/Data | Ready | ADR-006 |
+
+**Critical path**: 001 → 002 → 003 → 004 (with 005 also feeding 004's first green run). 006 is off the critical path.
+
+**Epic-level gap flagged**: **ADR-J (CI build pipeline)** is referenced by this epic but is not yet written. No E01 story's *implementation* is governed by it — the full build/export matrix (IL2CPP/WebGL player builds) and ADR-004's **L3** cross-backend golden-vector run are deliberately scoped OUT of Story 004 and deferred to ADR-J (E11/release). Write ADR-J before those items enter sprint.
+
 ## Next Step
 
-Run `/create-stories project-scaffold-ci` to break this epic into implementable stories.
-Recommended pre-work already flagged by `/architecture-review`: run `/test-setup` (creates
-`tests/` + `.github/workflows/tests.yml`, currently ❌) as part of this epic.
+Run `/story-readiness production/epics/project-scaffold-ci/story-001-unity-project-urp-render-graph.md`,
+then `/dev-story` to begin. Work stories in dependency order (each story's `Depends on:` field lists
+its prerequisites). Recommended pre-work already partly done by `/test-setup`
+(`tests/` + `.github/workflows/tests.yml` exist as a guarded skeleton; Story 004 activates them).
