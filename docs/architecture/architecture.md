@@ -8,7 +8,7 @@
 ## Document Status
 
 - **Version:** 1.0
-- **Status:** Reviewed — **CONCERNS** (`/architecture-review` 2026-07-18). Traceability: 42 TRs,
+- **Status:** **Accepted** — architecture-review CONCERNS resolved on disk 2026-07-18; gate re-run PASS (Pre-Production → Production). Traceability: 43 TRs (TR-be-006 appended),
   40 covered, 2 Presentation-tier partials (pending ADR-G/ADR-H), 0 uncovered gaps. All five
   Foundation ADRs (A–E = ADR-002…006) Accepted; dependency graph acyclic; engine-consistent. One
   cross-ADR conflict to reconcile before the BootLoader slice: **ADR-002 (manifests in the

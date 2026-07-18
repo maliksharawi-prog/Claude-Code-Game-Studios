@@ -157,3 +157,126 @@ Do NOT advance `production/stage.txt` to "Production" while this verdict stands.
 ## Do NOT
 - Do not create the missing sprint plan / stories / UX specs to "manufacture" a PASS from inside
   this gate — that defeats the gate. Run the named skills, then re-check.
+
+---
+---
+
+# Gate Check RE-RUN: Pre-Production → Production
+
+**Project**: Sweet Cascade
+**Date**: 2026-07-18 (re-run, same day)
+**Checked by**: `/gate-check pre-production` (autonomous adversarial re-run; run as producer)
+**Supersedes**: the FAIL verdict above (2026-07-18, first pass). That verdict named exactly two
+blockers — **B1** (no sprint plan / zero stories) and **B2** (key-screen UX specs unauthored /
+unreviewed) — and committed on disk: *"Meeting 1 and 2 flips this gate to PASS."* This re-run
+verifies both clearances **adversarially on disk** (files read, counts re-derived, paths resolved
+— not trusted from assertion) and disposes the eight carried concerns.
+
+---
+
+## Verdict: PASS (with 8 carried concerns into Production)
+
+Both hard blockers are **cleared and verified on disk**. The design, architecture, and art
+foundation were already production-ready in the first pass; the only binding gaps were the two
+Production-kickoff planning artifacts, and both now exist with real, traceable content. Per the
+first pass's own documented minimal-path-to-PASS, this flips to **PASS**. The eight carried
+concerns (C1–C8) are genuine and are **not** softened into silence — they carry into Production
+with named owners and timing below. None is a Pre-Production→Production blocker under the skill's
+tagging convention (recommended-but-not-blocking items → CONCERNS, not FAIL; the user decides).
+
+**Chain-of-Verification: 5 questions checked (3 tool-backed) — verdict unchanged (PASS).**
+- Blocker clearances verified by Read/Grep/count, not inference (sprint plan, status yaml, 3 story
+  files across 3 epics, 5 UX statuses, ux-review verdicts, §13 QQ table, footer, tr-registry count).
+- Re-derived story counts three ways (EPIC.md table rows ↔ story files on disk ↔ index.md) — all agree.
+- Re-read the two previously-missing UX specs to confirm substance (main-menu 23 sections/44.5KB;
+  pause-menu 27 sections/41.6KB) — authored, not stubs.
+- Resolved all 11 story paths referenced in `sprint-status.yaml` — 0 missing.
+- Least-confident check (B2 completeness) resolved: both new specs exist, read APPROVED, and the
+  review report records **0 blocking issues** across all five docs.
+
+---
+
+## Blocker clearances (adversarial, on-disk)
+
+### B1 — CLEARED ✅  (sprint plan + full story decomposition of all six gate epics)
+
+- `production/sprints/sprint-01.md` exists (160 lines, substantive; scope-boxed to E01 Must-Have +
+  E02-001…005 Should-Have) and references **real story file paths** that embed TR-ID + ADR.
+- `production/sprint-status.yaml` exists (11 story entries); **all 11 referenced paths resolve on
+  disk — 0 missing** (verified by path-resolution loop).
+- All six gate epics fully decomposed. Story-file count == EPIC.md Stories-table row count ==
+  `index.md` declared count == expected, for every epic:
+  **E01=6, E02=14, E03=15, E04=7, E05=9, E06=5 → 56 stories.** Zero discrepancy.
+- Traceability spot-check across **three** epics — each story embeds `Manifest Version: 2026-07-18`
+  + TR-ID(s) + governing ADR: E01-001 (`TR-perf-002`/ADR-001), E03-012 (`TR-sc-001,002`/ADR-005 +
+  §8.1 seam), E06-005 (`TR-ldf-002`,`TR-sp-004`/ADR-002+003+006).
+- E07–E11 remain EPIC.md-only ("Not yet created") — correct: they are Presentation/Content/QA-perf
+  layers, out of the six-epic gate scope and out of Sprint 1 scope. Not a gap.
+
+### B2 — CLEARED ✅  (five UX specs authored + `/ux-review` APPROVED, zero blocking)
+
+- All five `design/ux/*.md` docs read **"Status: APPROVED (ux-review, 2026-07-18)"**:
+  `hud.md`, `main-menu.md`, `pause-menu.md`, `interaction-patterns.md`,
+  `accessibility-requirements.md`. The two previously-absent specs (main-menu, pause-menu) are now
+  authored and substantive (44.5KB / 41.6KB).
+- `design/ux/ux-review-2026-07-18.md` exists with **per-document verdicts** (all five APPROVED) and
+  states plainly: **"Blocking issues found across all five documents: 0."** All five open items are
+  logged as Advisory-only (they map to carried concerns C2/C7 and E07-scope notes).
+
+### C3 — CLOSED on the two named conditions; one residual doc-hygiene item
+
+- `architecture.md` §13: **QQ-01…QQ-04 all show "RESOLVED 2026-07-18" with ADR pointers**
+  (QQ-01→ADR-005, QQ-02→ADR-003, QQ-03→ADR-002/003, QQ-04→ADR-004). ✅
+- Footer (line ~853) **synced to "Accepted"**: *"End of master architecture v1.0 — Accepted …
+  /architecture-review CONCERNS resolved on disk 2026-07-18; TD conditions discharged."* ✅
+- **Residual (new, minor):** the `## Document Status` **header** (lines 10–17) is still stale —
+  it reads "Status: Reviewed — CONCERNS", "Traceability: 42 TRs", and still narrates the ADR-002-vs-006
+  conflict as *"amend ADR-002. Still awaiting founder sign-off,"* even though that conflict is
+  resolved on disk (see first pass §Architecture-review reconciliation) and the count is now 43.
+  This is metadata drift, **not** an unresolved Foundation/Core open question — the §13 QQ table
+  (the authoritative open-question ledger) is correct. Folded into carried concern **C3** below.
+
+### TR-be-006 append — VERIFIED (append-only discipline held)
+
+- `tr-registry.yaml` now holds **43 unique TR-IDs** (was 42). `TR-be-006` is present and is a
+  **legitimate new** requirement: *board-engine Formula 4, 44px touch-target floor proof across the
+  3–9 grid range*, coverage *"board-engine Formula 4 / E03 story-011 Edit Mode test"* — created for
+  E03 story-011 (which exists on disk).
+- **No renumbering:** all 42 original IDs are intact (1 occurrence each, verified by uniq count);
+  `TR-be-006` sits after `TR-be-005` in the board-engine block. Append-only rule satisfied.
+- **Minor drift** (same family as C3): `architecture.md` header and `epics/index.md` still say
+  "42 TRs". Cosmetic count-sync only — the registry itself is the source of truth and is correct.
+
+---
+
+## Carried concerns (into Production — owners + timing; none blocking this gate)
+
+| # | Concern | Owner | Timing / trigger |
+|---|---|---|---|
+| **C1** | No **in-engine** vertical slice; core-loop fun/feel validated only via HTML slice (23/23 headless) + async verdict-only playtest. In-engine *feel* unproven. | unity-specialist (build) + founder (playtest) | Build + playtest the in-engine slice in the **first Production sprint**; ties to QQ-05 draw-call re-profile at the VS feel checkpoint. |
+| **C2** | **AD-ART-BIBLE** director sign-off not run (founder approval substitutes; art-bible content complete). | art-director | Run the AD gate on `art-bible.md` **before art production ramps (E08)** — not in Sprint 1 scope. |
+| **C3** | `architecture.md` **Document Status header** still says "CONCERNS / 42 TRs / conflict #1 awaiting sign-off" (stale); `index.md` also says "42 TRs". §13 QQ table + footer are correct. | technical-director | Doc hygiene: sync header to "Accepted / 43 TRs / conflict #1 resolved". Low effort, early Production. |
+| **C4** | Playtest report lives in `prototypes/`, not `production/playtests/`; core fantasy not independently debriefed. | producer + founder | Capture a structured `/playtest-report` on the in-engine slice; store under `production/playtests/`. |
+| **C5** | Entity inventory at `design/registry/entities.yaml` (188 lines), not `design/assets/entity-inventory.md`. Recommended-tier; equivalent content exists. | producer / art | Reconcile the path when convenient, or formally accept the alternate location. |
+| **C6** | ADR-002…006 Accepted with **"founder review may amend"** caveat. | technical-director / founder | Acceptable to unblock stories now; flag any late founder amendment (esp. ADR-002 local/remote split) as a change-propagation event. |
+| **C7** | Accessibility target tier has **no formal producer sign-off** (working "Basic-to-Standard"; ux-review flags tier sign-off "still pending producer"). | producer | Confirm the committed tier early in Production so E07 specs build against a fixed target. |
+| **C8** | CI: **`UNITY_LICENSE` / `UNITY_EMAIL` / `UNITY_PASSWORD` secrets not configured.** | **founder** | **Must be set before the Production → Polish CI gate** can run. Also needed this sprint for E01-004's full Edit+Play green run and E02-004's Mono golden-vector gate — configure once E01-001 scaffolds `src/SweetCascade/`. The license-free **L2 domain-purity gate is unaffected** and lands immediately. |
+
+---
+
+## Stage transition authorized
+
+**Pre-Production → Production.** Per the skill's PASS protocol (§6: "write the new stage name to
+`production/stage.txt`"), and because `production/stage.txt` did not previously exist, this re-run
+**creates `production/stage.txt` with the single line `Production`** (no trailing newline,
+per the `echo -n` convention the skill states). The status line now reads the Production stage.
+
+**We will know these were the right calls if:** (a) Sprint 1 stories are picked up with zero
+"what does done look like?" churn — validating B1's traceable decomposition and B2's reviewed UX;
+and (b) the in-engine slice confirms the core-loop *feel*, not just its function, matches the HTML
+validation — retiring C1 and QQ-05.
+
+## Do NOT (re-run)
+- Do not treat C8 as deferrable indefinitely — it is a **hard prerequisite** for the next gate
+  (Production → Polish). Surface it at Sprint 1 kickoff.
+- Do not let the C3/TR count drift compound — sync the architecture header + index once, early.
