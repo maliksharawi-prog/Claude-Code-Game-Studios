@@ -18,8 +18,14 @@ namespace SweetCascade.Domain.Rng
     /// <param name="MasterSeed">The session's F1/F2-derived (or directly-injected, for a test session) root seed.</param>
     /// <param name="AlgorithmVersion">Which mix32-finalizer version produced this seed (rng-service.md Tuning Knobs) — <c>"v1"</c> at MVP.</param>
     /// <param name="SessionStartTimestampIso">ISO 8601 UTC, supplied by the injected <see cref="IClock"/> — never read directly in Domain.</param>
-    /// <remarks>Story: E02-003. Governing doc: <c>design/gdd/rng-service.md</c> §3 (session log table).</remarks>
-    public readonly record struct RngSessionLog(
+    /// <remarks>
+    /// Story: E02-003. Governing doc: <c>design/gdd/rng-service.md</c> §3 (session log table).
+    /// Declared as a positional <c>record</c> (reference type), not <c>record struct</c>:
+    /// Unity 6.3 compiles with C# 9, where <c>record struct</c> (a C# 10 feature) fails with
+    /// CS8773 — found by the first real editor compile, 2026-07-19. Value equality and
+    /// positional construction are preserved; nothing consumes this type by value.
+    /// </remarks>
+    public sealed record RngSessionLog(
         long PrimaryId,
         long InstanceId,
         uint MasterSeed,
